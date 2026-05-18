@@ -1,12 +1,18 @@
 from fastapi import FastAPI
-from app.api.routers import router
+from api.vehiculo_router import router
 
-# Crear la aplicación
 app = FastAPI(
     title="EcoMove API",
-    description="API para el sistema EcoMove",
+    description="API REST para gestión de vehículos eléctricos",
     version="1.0.0"
 )
 
-# Incluir las rutas del router
 app.include_router(router)
+
+@app.get("/")
+def root():
+    return {"message": "¡EcoMove API funcionando! 🚀"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "EcoMove API"}
