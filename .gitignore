@@ -1,0 +1,32 @@
+# Entorno virtual
+venv/
+env/
+ENV/
+env.bak/
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Archivos de entorno
+.env
+.env.local
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Base de datos
+*.db
+*.sqlite
+
+# VS Code
+.vscode/
+
+# Descargas
+Downloads/
