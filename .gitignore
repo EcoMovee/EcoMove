@@ -1,4 +1,7 @@
-echo "__pycache__/" >> .gitignore
-echo ".vscode/" >> .gitignore
-echo "venv/" >> .gitignore
-echo ".env" >> .gitignore
+venv/ 
+__pycache__/ 
+*.pyc 
+*.db 
+.env 
+.vscode/ 
+.idea/ 
