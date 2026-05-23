@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from fastapi import FastAPI
 from app.api.v1.vehiculo_router import router
 
@@ -12,6 +13,37 @@ app.include_router(router, prefix="/api/v1")
 @app.get("/")
 def root():
     return {"message": "¡EcoMove API funcionando! 🚀"}
+=======
+# app/main.py
+from fastapi import FastAPI
+from api.v1.usuario_router import router
+from database.database import init_db
+
+# Inicializar base de datos
+init_db()
+
+app = FastAPI(
+    title="EcoMove API",
+    description="API para el sistema de movilidad sostenible EcoMove",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Incluir routers
+app.include_router(router)
+
+
+@app.get("/")
+def root():
+    return {
+        "success": True,
+        "message": "Bienvenido a EcoMove API",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
+
+>>>>>>> origin/development
 
 @app.get("/health")
 def health_check():

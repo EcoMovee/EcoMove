@@ -7,14 +7,20 @@ import os
 # Ruta de la base de datos
 DB_PATH = os.path.join(os.path.dirname(__file__), 'ecomove.db')
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/development
 def get_db():
     """Obtener conexión a la base de datos"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # Para acceder por nombre de columna
     return conn
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/development
 @contextmanager
 def get_db_context():
     """Context manager para la base de datos"""
@@ -25,6 +31,7 @@ def get_db_context():
     finally:
         conn.close()
 
+<<<<<<< HEAD
 
 def init_db():
     """Inicializar la base de datos - Crear todas las tablas"""
@@ -70,12 +77,42 @@ def init_db():
         print("✅ Base de datos inicializada correctamente")
 
 
+=======
+def init_db():
+    """Inicializar la base de datos - Crear tablas"""
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        # Crear tabla usuarios
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre VARCHAR(100) NOT NULL,
+                correo VARCHAR(100) UNIQUE NOT NULL,
+                telefono VARCHAR(20) NOT NULL,
+                contrasena_hash VARCHAR(255) NOT NULL,
+                rol VARCHAR(20) DEFAULT 'usuario',
+                estado BOOLEAN DEFAULT 1,
+                fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                intentos_fallidos INTEGER DEFAULT 0,
+                bloqueado_hasta TIMESTAMP NULL,
+                fecha_nacimiento DATE NULL
+            )
+        ''')
+        
+        # Crear índices
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo)')
+        
+        print("✅ Base de datos inicializada correctamente")
+
+>>>>>>> origin/development
 def reset_db():
     """Reiniciar la base de datos (solo para pruebas)"""
     import os
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
         print("🗑️ Base de datos eliminada")
+<<<<<<< HEAD
     init_db()
 
 
@@ -141,4 +178,6 @@ def update_vehiculo_estado(vehiculo_id: int, nuevo_estado: str):
 
 # ── Inicializar la base de datos al importar ──
 if __name__ == "__main__":
+=======
+>>>>>>> origin/development
     init_db()
