@@ -1,10 +1,26 @@
-venv/ 
-__pycache__/ 
-*.pyc 
-*.db 
-.env 
-<<<<<<< HEAD
-.vscode/ 
-.idea/ 
-=======
->>>>>>> origin/development
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# VS Code
+.vscode/
+.settings.json
+
+# Base de datos
+*.db
+*.sqlite
+
+# IDE
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

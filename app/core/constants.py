@@ -1,62 +1,72 @@
-<<<<<<< HEAD
+"""
+Archivo de constantes globales para EcoMove API
+"""
+
+# ── Configuración de autenticación ──
+JWT_SECRET_KEY = "tu-secret-key-aqui-cambiar-en-produccion"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_MINUTES = 60 * 24
+
+# ── Roles de usuario ──
+class UserRoles:
+    ADMIN = "admin"
+    USER = "user"
+    OPERADOR = "operador"
+
+# ── Tipos de vehículo permitidos ──
 class VehicleTypes:
     CARRO = "carro"
     MOTO = "moto"
     BICICLETA = "bicicleta"
     ALLOWED = [CARRO, MOTO, BICICLETA]
 
+# ── Estados de vehículo ──
+class VehicleStatus:
+    DISPONIBLE = "disponible"
+    EN_USO = "en_uso"
+    MANTENIMIENTO = "mantenimiento"
+    ALLOWED = [DISPONIBLE, EN_USO, MANTENIMIENTO]
+
+# ── Configuración de vehículos ──
 class VehicleConfig:
+    NIVEL_BATERIA_DEFAULT = 100
     TARIFA_MINIMA = 0.01
     MODELO_MIN_LENGTH = 3
     UBICACION_MIN_LENGTH = 3
-    NIVEL_BATERIA_DEFAULT = 100
 
-class HttpStatus:
-=======
-# app/core/constants.py
-
-class ErrorCodes:
-    """Códigos de error del sistema"""
-    EMAIL_EXISTS = "EMAIL_EXISTS"
-    INVALID_DATA = "INVALID_DATA"
-    INVALID_EMAIL = "INVALID_EMAIL"
-    INVALID_PASSWORD = "INVALID_PASSWORD"
-    INVALID_PHONE = "INVALID_PHONE"
-    USER_NOT_FOUND = "USER_NOT_FOUND"
-    UNDERAGE_USER = "UNDERAGE_USER"
-
-class HttpStatus:
-    """Códigos HTTP"""
-    OK = 200
->>>>>>> origin/development
-    CREATED = 201
-    BAD_REQUEST = 400
-    UNAUTHORIZED = 401
-    FORBIDDEN = 403
-<<<<<<< HEAD
-    SERVICE_UNAVAILABLE = 503
-
+# ── Mensajes de error ──
 class ErrorMessages:
+    VEHICLE_NOT_FOUND = "Vehículo no encontrado"
+    VEHICLE_ALREADY_EXISTS = "El vehículo ya está registrado"
     INVALID_VEHICLE_TYPE = "El tipo debe ser carro, moto o bicicleta"
     INVALID_TARIFA = "La tarifa por hora debe ser mayor a 0"
-    VEHICLE_ALREADY_EXISTS = "El vehículo ya está registrado"
+    INVALID_STATUS = "Estado inválido"
     UNAUTHORIZED = "Token no proporcionado"
     FORBIDDEN = "Acceso denegado. Se requieren privilegios de administrador"
     DB_CONNECTION_ERROR = "Error de conexión a la base de datos"
     MODELO_REQUIRED = "El modelo es obligatorio"
     UBICACION_REQUIRED = "La ubicación es obligatoria"
 
+# ── Mensajes de éxito ──
+class SuccessMessages:
+    VEHICLE_CREATED = "Vehículo creado correctamente"
+    VEHICLE_DELETED = "Vehículo eliminado correctamente"
+
+# ── Códigos de error ──
 class ErrorCodes:
-    INVALID_DATA = "INVALID_DATA"
+    VEHICLE_NOT_FOUND = "VEHICLE_NOT_FOUND"
     VEHICLE_ALREADY_EXISTS = "VEHICLE_ALREADY_EXISTS"
+    INVALID_DATA = "INVALID_DATA"
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     DB_CONNECTION_ERROR = "DB_CONNECTION_ERROR"
 
-class SuccessMessages:
-    VEHICLE_CREATED = "Vehículo creado correctamente"
-=======
+# ── Códigos HTTP ──
+class HttpStatus:
+    OK = 200
+    CREATED = 201
+    BAD_REQUEST = 400
+    UNAUTHORIZED = 401
+    FORBIDDEN = 403
     NOT_FOUND = 404
-    CONFLICT = 409
-    INTERNAL_ERROR = 500
->>>>>>> origin/development
+    SERVICE_UNAVAILABLE = 503
