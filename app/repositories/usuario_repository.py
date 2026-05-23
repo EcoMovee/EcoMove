@@ -1,7 +1,7 @@
 # app/repositories/usuario_repository.py
 from typing import List, Optional
-from database.database import get_db_context
-from domain.usuario_domain import Usuario
+from app.database.database import get_db_context
+from app.domain.usuario_domain import Usuario
 
 class UsuarioRepository:
     

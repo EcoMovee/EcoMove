@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from services.usuario_service import UsuarioService
-from core.constants import ErrorCodes, HttpStatus
+from app.services.usuario_service import UsuarioService
+from app.core.constants import ErrorCodes, HttpStatus
 
-router = APIRouter(prefix="/api/v1", tags=["Usuarios"])
+router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 service = UsuarioService()
 
-# 👇 Define un modelo Pydantic para el request body
+# Modelo Pydantic para el request body
 class RegistroUsuarioRequest(BaseModel):
     nombre: str
     correo: str
@@ -16,8 +16,10 @@ class RegistroUsuarioRequest(BaseModel):
     telefono: str
     fecha_nacimiento: Optional[str] = None
 
-@router.post("/usuarios", status_code=status.HTTP_201_CREATED)
-async def registrar_usuario(usuario_data: RegistroUsuarioRequest):  # ← ¡Usa el modelo!
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
+    """Registrar un nuevo usuario en el sistema"""
     try:
         nuevo_usuario = service.register(
             nombre=usuario_data.nombre,

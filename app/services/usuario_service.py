@@ -2,9 +2,9 @@
 import bcrypt
 import re
 from datetime import datetime, date
-from domain.usuario_domain import Usuario
-from repositories.usuario_repository import UsuarioRepository
-from core.constants import ErrorCodes
+from app.domain.usuario_domain import Usuario
+from app.repositories.usuario_repository import UsuarioRepository
+from app.core.constants import ErrorCodes
 
 class UsuarioService:
     def __init__(self):
