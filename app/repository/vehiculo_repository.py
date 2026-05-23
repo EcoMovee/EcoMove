@@ -1,71 +1,66 @@
 from typing import List, Optional, Dict
-from app.database.database import (
-    get_all_vehiculos,
-    get_vehiculo_by_id,
-    get_vehiculo_by_modelo,
-    create_vehiculo,
-    delete_vehiculo,
-    update_vehiculo_estado
-)
 from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate, EstadoVehiculo
+from datetime import datetime
 
 
 class VehiculoRepository:
-    """Repositorio para vehículos usando SQLite"""
+    """Simulación de base de datos en memoria"""
+    
+    def __init__(self):
+        self._db: Dict[int, Vehiculo] = {}
+        self._next_id: int = 1
     
     def get_all(self) -> List[Vehiculo]:
-        """Devuelve todos los vehículos"""
-        rows = get_all_vehiculos()
-        return [self._row_to_vehiculo(row) for row in rows]
+        return list(self._db.values())
     
     def get_by_id(self, vehiculo_id: int) -> Optional[Vehiculo]:
-        """Busca vehículo por ID"""
-        row = get_vehiculo_by_id(vehiculo_id)
-        return self._row_to_vehiculo(row) if row else None
+        return self._db.get(vehiculo_id)
     
     def get_by_modelo(self, modelo: str) -> Optional[Vehiculo]:
-        """Busca vehículo por modelo"""
-        row = get_vehiculo_by_modelo(modelo)
-        return self._row_to_vehiculo(row) if row else None
+        for vehiculo in self._db.values():
+            if vehiculo.modelo.lower() == modelo.lower():
+                return vehiculo
+        return None
     
     def create(self, data: VehiculoCreate) -> Optional[Vehiculo]:
-        """Crea un nuevo vehículo"""
-        # Verificar si ya existe
         existing = self.get_by_modelo(data.modelo)
         if existing:
             return None
         
-        # Crear vehículo
-        row = create_vehiculo(
+        vehiculo = Vehiculo(
+            id=self._next_id,
             tipo=data.tipo,
             modelo=data.modelo,
             ubicacion=data.ubicacion,
-            tarifaPorHora=data.tarifaPorHora
+            tarifaPorHora=data.tarifaPorHora,
+            estado=EstadoVehiculo.DISPONIBLE,
+            fecha_registro=datetime.now(),
+            nivel_bateria=100
         )
-        return self._row_to_vehiculo(row) if row else None
+        self._db[self._next_id] = vehiculo
+        self._next_id += 1
+        return vehiculo
     
     def delete(self, vehiculo_id: int) -> bool:
-        """Elimina un vehículo por ID"""
-        return delete_vehiculo(vehiculo_id)
+        if vehiculo_id in self._db:
+            del self._db[vehiculo_id]
+            return True
+        return False
     
-    def update_estado(self, vehiculo_id: int, nuevo_estado: EstadoVehiculo) -> Optional[Vehiculo]:
-        """Actualiza el estado de un vehículo"""
-        updated = update_vehiculo_estado(vehiculo_id, nuevo_estado)
-        if updated:
-            return self.get_by_id(vehiculo_id)
+    def update_estado(self, vehiculo_id: int, nuevo_estado: str) -> Optional[Vehiculo]:
+        vehiculo = self.get_by_id(vehiculo_id)
+        if vehiculo:
+            # Actualizar estado
+            updated = Vehiculo(
+                id=vehiculo.id,
+                tipo=vehiculo.tipo,
+                modelo=vehiculo.modelo,
+                ubicacion=vehiculo.ubicacion,
+                tarifaPorHora=vehiculo.tarifaPorHora,
+                estado=nuevo_estado,
+                fecha_registro=vehiculo.fecha_registro,
+                nivel_bateria=vehiculo.nivel_bateria
+            )
+            self._db[vehiculo_id] = updated
+            return updated
         return None
-    
-    def _row_to_vehiculo(self, row: dict) -> Vehiculo:
-        """Convierte una fila de la BD en un objeto Vehiculo"""
-        from app.domain.vehiculo_domain import Vehiculo, EstadoVehiculo, TipoVehiculo
-        
-        return Vehiculo(
-            id=row['id'],
-            tipo=row['tipo'],
-            modelo=row['modelo'],
-            ubicacion=row['ubicacion'],
-            tarifaPorHora=float(row['tarifaPorHora']),
-            estado=row['estado'],
-            fecha_registro=row['fecha_registro'],
-            nivel_bateria=row['nivel_bateria']
-        )
