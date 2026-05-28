@@ -3,7 +3,7 @@ import bcrypt
 import re
 from datetime import datetime, date
 from domain.usuario_domain import Usuario
-from repositories.usuario_repository import UsuarioRepository
+from repository.usuario_repository import UsuarioRepository
 from core.constants import ErrorCodes
 
 class UsuarioService:

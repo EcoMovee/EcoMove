@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from services.usuario_service import UsuarioService
+from service.usuario_service import UsuarioService
 from core.constants import ErrorCodes, HttpStatus
 
 router = APIRouter(prefix="/api/v1", tags=["Usuarios"])
