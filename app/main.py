@@ -1,22 +1,22 @@
 from fastapi import FastAPI
-from app.api.v1.pago_router import router as pago_router
-from app.database.database import init_db
-
-# Inicializar base de datos
-init_db()
+from api.v1.usuario_router import router
 
 app = FastAPI(
     title="EcoMove API",
-    description="API REST para procesamiento de pagos",
+    description="API para el sistema de movilidad sostenible EcoMove",
     version="1.0.0"
 )
 
-# Registrar solo el router de pagos
-app.include_router(pago_router, prefix="/api/v1")
+app.include_router(router)
 
 @app.get("/")
 def root():
-    return {"message": "EcoMove API - HU-013 Procesamiento de pagos funcionando 🚀"}
+    return {
+        "success": True,
+        "message": "Bienvenido a EcoMove API",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
 
 @app.get("/health")
 def health_check():
