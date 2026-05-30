@@ -12,7 +12,6 @@ class UsuarioService:
     
     # ========== HU-001: REGISTRO ==========
     def register(self, nombre: str, correo: str, contrasena: str, telefono: str, fecha_nacimiento: str = None) -> Usuario:
-        """Registra un nuevo usuario"""
         correo = correo.lower().strip()
         
         if self.repository.get_by_email(correo):
@@ -42,36 +41,23 @@ class UsuarioService:
     
     # ========== HU-002: LOGIN ==========
     def login(self, email: str, password: str) -> dict:
-        """
-        Autentica un usuario y retorna token JWT
-        - Validación de credenciales
-        - Control de intentos fallidos (máximo 3)
-        - Bloqueo de cuenta por 15 minutos
-        - Generación de token JWT con expiración de 2 horas
-        """
         email = email.lower().strip()
         usuario = self.repository.get_by_email(email)
         
-        # SEGURIDAD: Mensaje genérico si el usuario no existe
         if not usuario:
             raise ValueError(ErrorCodes.INVALID_CREDENTIALS)
         
-        # Verificar si el usuario está activo
         if not usuario.estado:
             raise ValueError(ErrorCodes.USER_INACTIVE)
         
-        # Verificar si está bloqueado
         if usuario.bloqueado_hasta and usuario.bloqueado_hasta > datetime.now():
             minutos_restantes = int((usuario.bloqueado_hasta - datetime.now()).total_seconds() / 60)
             raise ValueError(f"{ErrorCodes.ACCOUNT_BLOCKED}|{minutos_restantes}")
         
-        # Verificar contraseña
         if not verify_password(password, usuario.contrasena_hash):
-            # Incrementar intentos fallidos
             nuevos_intentos = (usuario.intentos_fallidos or 0) + 1
             self.repository.update_intentos_fallidos(usuario.id, nuevos_intentos)
             
-            # Si alcanzó el máximo (3 intentos), bloquear por 15 minutos
             if nuevos_intentos >= 3:
                 bloqueado_hasta = datetime.now() + timedelta(minutes=15)
                 self.repository.update_bloqueo(usuario.id, bloqueado_hasta)
@@ -80,10 +66,8 @@ class UsuarioService:
             intentos_restantes = 3 - nuevos_intentos
             raise ValueError(f"{ErrorCodes.INVALID_CREDENTIALS}|{intentos_restantes}")
         
-        # Login exitoso: resetear intentos y bloqueo
         self.repository.reset_intentos_y_bloqueo(usuario.id)
         
-        # Generar token JWT
         token_data = {
             "id": usuario.id,
             "nombre": usuario.nombre,
@@ -102,6 +86,60 @@ class UsuarioService:
                 "email": usuario.correo,
                 "rol": usuario.rol
             }
+        }
+    
+    # ========== HU-003: ACTUALIZAR PERFIL ==========
+    def actualizar_perfil(self, user_id: int, nombre: str = None, telefono: str = None, 
+                          contrasena_actual: str = None, nueva_contrasena: str = None) -> dict:
+        """
+        Actualiza el perfil del usuario.
+        - Permite actualizar nombre y teléfono
+        - No permite actualizar email
+        - Cambio de contraseña opcional (requiere contraseña actual)
+        """
+        usuario = self.repository.get_by_id(user_id)
+        
+        if not usuario:
+            raise ValueError(ErrorCodes.USER_NOT_FOUND)
+        
+        # Validar teléfono si viene
+        if telefono:
+            self._validate_phone(telefono)
+        
+        # Actualizar nombre
+        if nombre:
+            if len(nombre.strip()) < 2:
+                raise ValueError("El nombre debe tener al menos 2 caracteres")
+            usuario.nombre = nombre.strip()
+        
+        # Actualizar teléfono
+        if telefono:
+            usuario.telefono = telefono
+        
+        # Cambiar contraseña si se proporciona
+        if nueva_contrasena:
+            if not contrasena_actual:
+                raise ValueError("Debe proporcionar la contraseña actual para cambiarla")
+            
+            if not verify_password(contrasena_actual, usuario.contrasena_hash):
+                raise ValueError(ErrorCodes.INVALID_CURRENT_PASSWORD)
+            
+            # Validar nueva contraseña
+            self._validate_password(nueva_contrasena)
+            
+            # Encriptar nueva contraseña
+            salt = bcrypt.gensalt(rounds=10)
+            usuario.contrasena_hash = bcrypt.hashpw(nueva_contrasena.encode('utf-8'), salt).decode('utf-8')
+        
+        # Guardar cambios
+        self.repository.update(user_id, usuario)
+        
+        return {
+            "id": usuario.id,
+            "nombre": usuario.nombre,
+            "email": usuario.correo,
+            "telefono": usuario.telefono,
+            "rol": usuario.rol
         }
     
     # ========== VALIDACIONES ==========
