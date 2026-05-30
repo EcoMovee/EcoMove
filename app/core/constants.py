@@ -1,11 +1,22 @@
 class ErrorCodes:
     """Códigos de error del sistema"""
+    # HU-001
     EMAIL_EXISTS = "EMAIL_EXISTS"
     INVALID_DATA = "INVALID_DATA"
     INVALID_EMAIL = "INVALID_EMAIL"
     INVALID_PASSWORD = "INVALID_PASSWORD"
     INVALID_PHONE = "INVALID_PHONE"
     UNDERAGE_USER = "UNDERAGE_USER"
+    
+    # HU-002
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    ACCOUNT_BLOCKED = "ACCOUNT_BLOCKED"
+    USER_INACTIVE = "USER_INACTIVE"
+    
+    # HU-003
+    EMAIL_UPDATE_NOT_ALLOWED = "EMAIL_UPDATE_NOT_ALLOWED"
+    INVALID_CURRENT_PASSWORD = "INVALID_CURRENT_PASSWORD"
 
 class HttpStatus:
     """Códigos HTTP"""
@@ -16,12 +27,3 @@ class HttpStatus:
     FORBIDDEN = 403
     NOT_FOUND = 404
     INTERNAL_ERROR = 500
-
-class ErrorMessages:
-    """Mensajes de error"""
-    EMAIL_EXISTS = "El email ya está registrado"
-    INVALID_DATA = "Datos inválidos"
-
-class SuccessMessages:
-    """Mensajes de éxito"""
-    USER_CREATED = "Usuario creado correctamente"

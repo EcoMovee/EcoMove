@@ -18,6 +18,7 @@ class Usuario(BaseModel):
     rol: str = "usuario"
     estado: bool = True
     fecha_registro: datetime = Field(default_factory=datetime.now)
+    # HU-002: control de intentos fallidos
     intentos_fallidos: int = 0
     bloqueado_hasta: Optional[datetime] = None
     fecha_nacimiento: Optional[date] = None

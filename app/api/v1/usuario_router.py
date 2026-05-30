@@ -1,32 +1,36 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 from service.usuario_service import UsuarioService
 from core.constants import ErrorCodes, HttpStatus
+from core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["Usuarios"])
 service = UsuarioService()
 
+# ========== MODELOS ==========
 class RegistroUsuarioRequest(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=100, description="Nombre completo del usuario")
-    correo: str = Field(..., description="Correo electrónico (debe ser único)")
-    contrasena: str = Field(..., min_length=8, description="Contraseña (mínimo 8 caracteres, mayúscula, número, carácter especial)")
-    telefono: str = Field(..., description="Teléfono con código de país, ej: +573001234567")
-    fecha_nacimiento: Optional[str] = Field(None, description="Fecha de nacimiento (YYYY-MM-DD) para validar mayoría de edad")
+    nombre: str = Field(..., min_length=2, max_length=100)
+    correo: str = Field(...)
+    contrasena: str = Field(..., min_length=8)
+    telefono: str = Field(...)
+    fecha_nacimiento: Optional[str] = None
 
+class LoginRequest(BaseModel):
+    email: str = Field(...)
+    password: str = Field(...)
+
+class ActualizarPerfilRequest(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=2, max_length=100)
+    telefono: Optional[str] = None
+    contrasena_actual: Optional[str] = None
+    nueva_contrasena: Optional[str] = None
+
+
+# ========== ENDPOINTS ==========
 @router.post("/usuarios", status_code=status.HTTP_201_CREATED)
 async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
-    """
-    Registra un nuevo usuario en el sistema.
-    
-    Validaciones:
-    - Nombre: mínimo 2 caracteres
-    - Correo: formato válido y único
-    - Contraseña: mínimo 8 caracteres, al menos una mayúscula, un número y un carácter especial
-    - Teléfono: código de país + 7-15 dígitos
-    - Fecha de nacimiento: mayor de 18 años
-    """
     try:
         nuevo_usuario = service.register(
             nombre=usuario_data.nombre,
@@ -35,7 +39,6 @@ async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
             telefono=usuario_data.telefono,
             fecha_nacimiento=usuario_data.fecha_nacimiento
         )
-        
         return {
             "success": True,
             "statusCode": HttpStatus.CREATED,
@@ -47,10 +50,8 @@ async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
                 "telefono": nuevo_usuario.telefono
             }
         }
-    
     except ValueError as e:
         error_msg = str(e)
-        
         if error_msg == ErrorCodes.EMAIL_EXISTS:
             return JSONResponse(
                 status_code=HttpStatus.BAD_REQUEST,
@@ -64,7 +65,6 @@ async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
                     }
                 }
             )
-        
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
@@ -77,7 +77,6 @@ async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
                 }
             }
         )
-    
     except Exception as e:
         return JSONResponse(
             status_code=HttpStatus.INTERNAL_ERROR,
@@ -88,6 +87,158 @@ async def registrar_usuario(usuario_data: RegistroUsuarioRequest):
                 "error": {
                     "code": "INTERNAL_ERROR",
                     "details": str(e)
+                }
+            }
+        )
+
+
+@router.post("/usuarios/login")
+async def login(login_data: LoginRequest):
+    try:
+        resultado = service.login(
+            email=login_data.email,
+            password=login_data.password
+        )
+        return {
+            "success": True,
+            "statusCode": HttpStatus.OK,
+            "message": "Inicio de sesión exitoso",
+            "data": resultado
+        }
+    except ValueError as e:
+        error_msg = str(e)
+        
+        if error_msg.startswith(ErrorCodes.ACCOUNT_BLOCKED):
+            partes = error_msg.split("|")
+            minutos_restantes = int(partes[1]) if len(partes) > 1 else 15
+            return JSONResponse(
+                status_code=HttpStatus.FORBIDDEN,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.FORBIDDEN,
+                    "message": "Cuenta bloqueada por múltiples intentos fallidos",
+                    "data": {"minutos_restantes": minutos_restantes}
+                }
+            )
+        
+        if error_msg.startswith(ErrorCodes.INVALID_CREDENTIALS):
+            partes = error_msg.split("|")
+            intentos_restantes = int(partes[1]) if len(partes) > 1 else None
+            response = {
+                "success": False,
+                "statusCode": HttpStatus.UNAUTHORIZED,
+                "message": "Credenciales inválidas"
+            }
+            if intentos_restantes is not None:
+                response["intentos_restantes"] = intentos_restantes
+            return JSONResponse(
+                status_code=HttpStatus.UNAUTHORIZED,
+                content=response
+            )
+        
+        if error_msg == ErrorCodes.USER_INACTIVE:
+            return JSONResponse(
+                status_code=HttpStatus.UNAUTHORIZED,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.UNAUTHORIZED,
+                    "message": "Usuario desactivado. Contacte al administrador"
+                }
+            )
+        
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Error en el inicio de sesión",
+                "error": {
+                    "code": ErrorCodes.INVALID_DATA,
+                    "details": error_msg
+                }
+            }
+        )
+
+
+# ========== HU-003: ACTUALIZAR PERFIL ==========
+@router.put("/usuarios/{id}")
+async def actualizar_perfil(
+    id: int,
+    perfil_data: ActualizarPerfilRequest,
+    current_user_id: int = Depends(get_current_user)
+):
+    """
+    Actualiza el perfil del usuario autenticado.
+    - Solo el propio usuario puede actualizar su perfil
+    - Permite actualizar nombre y teléfono
+    - No permite actualizar email
+    - Cambio de contraseña opcional (requiere contraseña actual)
+    """
+    # Verificar que el usuario solo modifique su propio perfil
+    if current_user_id != id:
+        return JSONResponse(
+            status_code=HttpStatus.FORBIDDEN,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.FORBIDDEN,
+                "message": "No tiene permiso para modificar este usuario"
+            }
+        )
+    
+    try:
+        resultado = service.actualizar_perfil(
+            user_id=id,
+            nombre=perfil_data.nombre,
+            telefono=perfil_data.telefono,
+            contrasena_actual=perfil_data.contrasena_actual,
+            nueva_contrasena=perfil_data.nueva_contrasena
+        )
+        return {
+            "success": True,
+            "statusCode": HttpStatus.OK,
+            "message": "Usuario actualizado correctamente",
+            "data": resultado
+        }
+    except ValueError as e:
+        error_msg = str(e)
+        
+        if error_msg == ErrorCodes.USER_NOT_FOUND:
+            return JSONResponse(
+                status_code=HttpStatus.NOT_FOUND,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.NOT_FOUND,
+                    "message": "Usuario no encontrado",
+                    "error": {
+                        "code": "USER_NOT_FOUND",
+                        "details": "No existe un usuario con el ID proporcionado"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.INVALID_CURRENT_PASSWORD:
+            return JSONResponse(
+                status_code=HttpStatus.BAD_REQUEST,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.BAD_REQUEST,
+                    "message": "Contraseña actual incorrecta",
+                    "error": {
+                        "code": "INVALID_CURRENT_PASSWORD",
+                        "details": "La contraseña actual no coincide con nuestros registros"
+                    }
+                }
+            )
+        
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Datos inválidos",
+                "error": {
+                    "code": ErrorCodes.INVALID_DATA,
+                    "details": error_msg
                 }
             }
         )
