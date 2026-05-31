@@ -33,9 +33,14 @@ class UsuarioService:
             telefono=telefono,
             contrasena_hash=hashed_password.decode('utf-8'),
             fecha_nacimiento=edad_validada,
-            rol="usuario",
             estado=True
         )
+        
+        # Determinar rol basado en el correo
+        if correo == "admin@ecomove.com":
+            usuario.rol = "administrador"
+        else:
+            usuario.rol = "usuario"
         
         return self.repository.create(usuario)
     
@@ -91,32 +96,22 @@ class UsuarioService:
     # ========== HU-003: ACTUALIZAR PERFIL ==========
     def actualizar_perfil(self, user_id: int, nombre: str = None, telefono: str = None, 
                           contrasena_actual: str = None, nueva_contrasena: str = None) -> dict:
-        """
-        Actualiza el perfil del usuario.
-        - Permite actualizar nombre y teléfono
-        - No permite actualizar email
-        - Cambio de contraseña opcional (requiere contraseña actual)
-        """
         usuario = self.repository.get_by_id(user_id)
         
         if not usuario:
             raise ValueError(ErrorCodes.USER_NOT_FOUND)
         
-        # Validar teléfono si viene
         if telefono:
             self._validate_phone(telefono)
         
-        # Actualizar nombre
         if nombre:
             if len(nombre.strip()) < 2:
                 raise ValueError("El nombre debe tener al menos 2 caracteres")
             usuario.nombre = nombre.strip()
         
-        # Actualizar teléfono
         if telefono:
             usuario.telefono = telefono
         
-        # Cambiar contraseña si se proporciona
         if nueva_contrasena:
             if not contrasena_actual:
                 raise ValueError("Debe proporcionar la contraseña actual para cambiarla")
@@ -124,14 +119,11 @@ class UsuarioService:
             if not verify_password(contrasena_actual, usuario.contrasena_hash):
                 raise ValueError(ErrorCodes.INVALID_CURRENT_PASSWORD)
             
-            # Validar nueva contraseña
             self._validate_password(nueva_contrasena)
             
-            # Encriptar nueva contraseña
             salt = bcrypt.gensalt(rounds=10)
             usuario.contrasena_hash = bcrypt.hashpw(nueva_contrasena.encode('utf-8'), salt).decode('utf-8')
         
-        # Guardar cambios
         self.repository.update(user_id, usuario)
         
         return {
@@ -144,7 +136,6 @@ class UsuarioService:
     
     # ========== VALIDACIONES ==========
     def _validate_password(self, password: str) -> None:
-        """Validar requisitos de contraseña"""
         errors = []
         if len(password) < 8:
             errors.append("mínimo 8 caracteres")
@@ -158,12 +149,10 @@ class UsuarioService:
             raise ValueError(f"La contraseña debe tener: {', '.join(errors)}")
     
     def _validate_phone(self, phone: str) -> None:
-        """Validar formato de teléfono internacional"""
         if not re.match(r'^\+\d{1,3}\d{7,15}$', phone):
             raise ValueError("El teléfono debe tener código de país y entre 7 y 15 dígitos. Ejemplo: +573001234567")
     
     def _validate_age(self, birth_date_str: str) -> date:
-        """Validar que el usuario sea mayor de 18 años"""
         try:
             birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
             today = date.today()
@@ -175,3 +164,33 @@ class UsuarioService:
             if "mayor de 18" in str(e):
                 raise
             raise ValueError("Formato de fecha inválido. Use YYYY-MM-DD")
+            # ========== HU-004: DESACTIVAR USUARIO ==========
+    def desactivar_usuario(self, admin_id: int, user_id: int, motivo: str = None) -> dict:
+        from datetime import datetime
+        
+        admin = self.repository.get_by_id(admin_id)
+        if not admin or admin.rol != "administrador":
+            raise ValueError("ADMIN_REQUIRED")
+        
+        if admin_id == user_id:
+            raise ValueError("CANNOT_DESACTIVATE_SELF")
+        
+        usuario = self.repository.get_by_id(user_id)
+        if not usuario:
+            raise ValueError("USER_NOT_FOUND")
+        
+        if not usuario.estado:
+            raise ValueError("USER_ALREADY_INACTIVE")
+        
+        estado_anterior = usuario.estado
+        usuario.estado = False
+        self.repository.update(user_id, usuario)
+        
+        return {
+            "usuario_id": usuario.id,
+            "nombre": usuario.nombre,
+            "email": usuario.correo,
+            "estado_anterior": estado_anterior,
+            "estado_nuevo": False,
+            "fecha_desactivacion": datetime.now().isoformat()
+        }
