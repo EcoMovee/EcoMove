@@ -3,9 +3,19 @@ from domain.usuario_domain import Usuario
 from datetime import datetime
 
 class UsuarioRepository:
+    _instance = None
+    _usuarios = None
+    _counter = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._usuarios = []
+            cls._instance._counter = 1
+        return cls._instance
+    
     def __init__(self):
-        self._usuarios: List[Usuario] = []
-        self._counter = 1
+        pass
     
     def create(self, usuario: Usuario) -> Usuario:
         usuario.id = self._counter
@@ -44,12 +54,43 @@ class UsuarioRepository:
                 usuario.bloqueado_hasta = None
                 break
     
-    # NUEVO MÉTODO PARA HU-003
     def update(self, user_id: int, usuario: Usuario) -> Optional[Usuario]:
-        """Actualiza un usuario existente"""
         for i, u in enumerate(self._usuarios):
             if u.id == user_id:
                 usuario.id = user_id
                 self._usuarios[i] = usuario
                 return usuario
         return None
+    
+    def count_administradores_activos(self) -> int:
+        count = 0
+        for usuario in self._usuarios:
+            if usuario.rol == "administrador" and usuario.estado:
+                count += 1
+        return count
+    
+    def usuario_tiene_reservas_activas(self, user_id: int) -> bool:
+        return False
+    
+    def crear_administrador_inicial(self):
+        import bcrypt
+        
+        for usuario in self._usuarios:
+            if usuario.rol == "administrador":
+                print(f"✅ Administrador ya existe: {usuario.correo}")
+                return usuario
+        
+        hashed = bcrypt.hashpw("Admin123!".encode('utf-8'), bcrypt.gensalt())
+        
+        admin = Usuario(
+            nombre="Administrador",
+            correo="admin@ecomove.com",
+            telefono="+573001234567",
+            contrasena_hash=hashed.decode('utf-8'),
+            rol="administrador",
+            estado=True
+        )
+        
+        resultado = self.create(admin)
+        print(f"✅ Administrador creado: {resultado.correo} / Contraseña: Admin123!")
+        return resultado
