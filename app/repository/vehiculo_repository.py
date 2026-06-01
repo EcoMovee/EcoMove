@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
+from typing import Optional
+
 
 
 class VehiculoRepository:
@@ -32,3 +34,28 @@ class VehiculoRepository:
         self._db[self._next_id] = vehiculo
         self._next_id += 1
         return vehiculo
+    
+    
+    
+    
+    # ==================== HU-006: Métodos para consulta ====================
+
+    def get_disponibles(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos con estado 'disponible' (excluye en_uso y mantenimiento)"""
+        disponibles = []
+        for vehiculo in self._db.values():
+            if vehiculo.estado == "disponible":
+                if tipo is None or vehiculo.tipo == tipo:
+                    disponibles.append(vehiculo)
+        return disponibles
+
+    def get_disponibles_con_ubicacion(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos disponibles que tienen coordenadas"""
+        disponibles = []
+        for vehiculo in self._db.values():
+            if vehiculo.estado == "disponible":
+                if hasattr(vehiculo, 'latitud') and hasattr(vehiculo, 'longitud'):
+                    if vehiculo.latitud and vehiculo.longitud:
+                        if tipo is None or vehiculo.tipo == tipo:
+                            disponibles.append(vehiculo)
+        return disponibles

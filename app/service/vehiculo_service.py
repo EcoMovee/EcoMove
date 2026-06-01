@@ -1,5 +1,7 @@
 from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
 from app.repository.vehiculo_repository import VehiculoRepository
+from typing import Optional
+
 
 
 class VehiculoService:
@@ -12,3 +14,75 @@ class VehiculoService:
         if existing:
             raise ValueError("VEHICLE_ALREADY_EXISTS")
         return self.repo.create(data)
+    
+    
+    
+    # ==================== HU-006: Consulta de vehículos disponibles ====================
+
+    def calcular_distancia(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calcula distancia usando fórmula de Haversine (km)"""
+        import math
+        R = 6371
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        delta_lat = math.radians(lat2 - lat1)
+        delta_lon = math.radians(lon2 - lon1)
+        a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return round(R * c, 2)
+
+    def get_vehiculos_disponibles(self, tipo: Optional[str] = None,
+                                   latitud: Optional[float] = None,
+                                   longitud: Optional[float] = None,
+                                   radio_km: Optional[float] = None):
+        """Consulta vehículos disponibles con filtros"""
+        from app.domain.vehiculo_domain import VehiculoDisponible
+        
+        filtros_aplicados = {
+            "tipo": tipo if tipo else None,
+            "latitud": latitud if latitud else None,
+            "longitud": longitud if longitud else None,
+            "radio_km": radio_km if radio_km else None
+        }
+        
+        if radio_km is not None and radio_km <= 0:
+            raise ValueError("INVALID_RADIUS")
+        if tipo and tipo not in ["carro", "moto", "bicicleta"]:
+            raise ValueError("INVALID_TYPE")
+        
+        if latitud is not None and longitud is not None and radio_km is not None:
+            vehiculos_db = self.repo.get_disponibles_con_ubicacion(tipo)
+            resultados = []
+            for v in vehiculos_db:
+                distancia = self.calcular_distancia(latitud, longitud, v.latitud, v.longitud)
+                if distancia <= radio_km:
+                    resultados.append({"vehiculo": v, "distancia": distancia})
+            resultados.sort(key=lambda x: x["distancia"])
+            vehiculos = [
+                VehiculoDisponible(
+                    id=r["vehiculo"].id,
+                    tipo=r["vehiculo"].tipo,
+                    modelo=r["vehiculo"].modelo,
+                    ubicacion=r["vehiculo"].ubicacion,
+                    tarifaPorHora=r["vehiculo"].tarifaPorHora,
+                    distancia_km=r["distancia"],
+                    nivel_bateria=r["vehiculo"].nivel_bateria
+                )
+                for r in resultados
+            ]
+        else:
+            vehiculos_db = self.repo.get_disponibles(tipo)
+            vehiculos = [
+                VehiculoDisponible(
+                    id=v.id,
+                    tipo=v.tipo,
+                    modelo=v.modelo,
+                    ubicacion=v.ubicacion,
+                    tarifaPorHora=v.tarifaPorHora,
+                    distancia_km=None,
+                    nivel_bateria=v.nivel_bateria
+                )
+                for v in vehiculos_db
+            ]
+        
+        return vehiculos, filtros_aplicados
