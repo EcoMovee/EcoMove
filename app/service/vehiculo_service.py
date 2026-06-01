@@ -131,3 +131,53 @@ class VehiculoService:
     def get_historial_cambios(self, vehiculo_id: int = None):
         """Obtener historial de cambios de estado"""
         return self.repo.get_historial(vehiculo_id)
+    
+    
+    # ==================== HU-008: Bloqueo de vehículos en mantenimiento ====================
+
+    def get_vehiculos_disponibles_excluyendo_mantenimiento(self, tipo: Optional[str] = None):
+        """Obtener vehículos disponibles (excluye mantenimiento y en_uso)"""
+        from app.domain.vehiculo_domain import VehiculoDisponible
+        
+        vehiculos_db = self.repo.get_disponibles_excluyendo_mantenimiento(tipo)
+        return [
+            VehiculoDisponible(
+                id=v.id,
+                tipo=v.tipo,
+                modelo=v.modelo,
+                ubicacion=v.ubicacion,
+                tarifaPorHora=v.tarifaPorHora,
+                distancia_km=None,
+                nivel_bateria=v.nivel_bateria
+            )
+            for v in vehiculos_db
+        ]
+
+    def get_vehiculos_by_estado(self, estado: str, tipo: Optional[str] = None):
+        """Obtener vehículos por estado (para administradores)"""
+        from app.domain.vehiculo_domain import Vehiculo
+        
+        vehiculos_db = self.repo.get_by_estado(estado)
+        if tipo:
+            vehiculos_db = [v for v in vehiculos_db if v.tipo == tipo]
+        
+        return [
+            Vehiculo(
+                id=v.id,
+                tipo=v.tipo,
+                modelo=v.modelo,
+                ubicacion=v.ubicacion,
+                tarifaPorHora=v.tarifaPorHora,
+                estado=v.estado,
+                fecha_registro=v.fecha_registro,
+                nivel_bateria=v.nivel_bateria
+            )
+            for v in vehiculos_db
+        ]
+
+    def verificar_disponibilidad_para_reserva(self, vehiculo_id: int) -> bool:
+        """Verificar si un vehículo está disponible para reserva"""
+        vehiculo = self.repo.get_vehiculo_by_id(vehiculo_id)
+        if not vehiculo:
+            return False
+        return vehiculo.estado == "disponible"
