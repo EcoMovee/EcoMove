@@ -60,3 +60,9 @@ class VehiculoDisponible(BaseModel):
     tarifaPorHora: float
     distancia_km: Optional[float] = None
     nivel_bateria: int
+    
+# ==================== HU-007: Actualización de estado ====================
+
+class EstadoUpdateRequest(BaseModel):
+    nuevo_estado: str
+    confirmar_reservas_futuras: Optional[bool] = False

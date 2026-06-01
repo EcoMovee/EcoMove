@@ -86,3 +86,48 @@ class VehiculoService:
             ]
         
         return vehiculos, filtros_aplicados
+    
+    
+    
+    # ==================== HU-007: Actualización de estado ====================
+
+    def update_estado(self, vehiculo_id: int, nuevo_estado: str, 
+                      admin_id: int, confirmar: bool = False):
+        """Actualizar estado de un vehículo con validaciones"""
+        
+        # Transiciones permitidas
+        transiciones_permitidas = {
+            "disponible": ["en_uso", "mantenimiento"],
+            "en_uso": ["disponible"],
+            "mantenimiento": ["disponible"]
+        }
+        
+        # Obtener vehículo
+        vehiculo = self.repo.get_vehiculo_by_id(vehiculo_id)
+        if not vehiculo:
+            raise ValueError("VEHICLE_NOT_FOUND")
+        
+        estado_actual = vehiculo.estado
+        
+        # Validar transición
+        if nuevo_estado not in transiciones_permitidas.get(estado_actual, []):
+            raise ValueError(f"INVALID_TRANSITION:{estado_actual}:{nuevo_estado}")
+        
+        # Verificar reservas futuras si se cambia a mantenimiento
+        reservas_afectadas = 0
+        if nuevo_estado == "mantenimiento":
+            reservas_afectadas = self.repo.get_reservas_futuras_count(vehiculo_id)
+            if reservas_afectadas > 0 and not confirmar:
+                raise ValueError(f"RESERVAS_FUTURAS:{reservas_afectadas}")
+        
+        # Actualizar estado
+        vehiculo_actualizado, estado_anterior = self.repo.update_estado(vehiculo_id, nuevo_estado)
+        
+        # Registrar en historial
+        self.repo.registrar_historial(vehiculo_id, estado_anterior, nuevo_estado, admin_id, reservas_afectadas)
+        
+        return vehiculo_actualizado, estado_anterior, reservas_afectadas
+
+    def get_historial_cambios(self, vehiculo_id: int = None):
+        """Obtener historial de cambios de estado"""
+        return self.repo.get_historial(vehiculo_id)
