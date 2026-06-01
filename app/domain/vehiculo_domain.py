@@ -41,3 +41,22 @@ class Vehiculo(VehiculoBase):
 
     class Config:
         from_attributes = True
+        
+        
+
+# ==================== HU-006: Modelos para consulta de vehículos disponibles ====================
+
+class FiltrosAplicados(BaseModel):
+    tipo: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    radio_km: Optional[float] = None
+
+class VehiculoDisponible(BaseModel):
+    id: int
+    tipo: str
+    modelo: str
+    ubicacion: str
+    tarifaPorHora: float
+    distancia_km: Optional[float] = None
+    nivel_bateria: int
