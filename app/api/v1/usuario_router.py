@@ -27,6 +27,10 @@ class ActualizarPerfilRequest(BaseModel):
     contrasena_actual: Optional[str] = None
     nueva_contrasena: Optional[str] = None
 
+# NUEVO MODELO PARA HU-004
+class DesactivarUsuarioRequest(BaseModel):
+    motivo: Optional[str] = Field(None, description="Motivo de la desactivación")
+
 
 # ========== ENDPOINTS ==========
 @router.post("/usuarios", status_code=status.HTTP_201_CREATED)
@@ -160,21 +164,12 @@ async def login(login_data: LoginRequest):
         )
 
 
-# ========== HU-003: ACTUALIZAR PERFIL ==========
 @router.put("/usuarios/{id}")
 async def actualizar_perfil(
     id: int,
     perfil_data: ActualizarPerfilRequest,
     current_user_id: int = Depends(get_current_user)
 ):
-    """
-    Actualiza el perfil del usuario autenticado.
-    - Solo el propio usuario puede actualizar su perfil
-    - Permite actualizar nombre y teléfono
-    - No permite actualizar email
-    - Cambio de contraseña opcional (requiere contraseña actual)
-    """
-    # Verificar que el usuario solo modifique su propio perfil
     if current_user_id != id:
         return JSONResponse(
             status_code=HttpStatus.FORBIDDEN,
@@ -242,3 +237,144 @@ async def actualizar_perfil(
                 }
             }
         )
+
+
+# ========== HU-004: DESACTIVAR USUARIO ==========
+@router.patch("/usuarios/estado/{id}")
+async def desactivar_usuario(
+    id: int,
+    request_data: DesactivarUsuarioRequest = None,
+    current_user_id: int = Depends(get_current_user)
+):
+    """
+    Desactiva un usuario (solo administradores).
+    
+    - Solo administradores pueden ejecutar esta acción
+    - No permite desactivarse a sí mismo
+    - Valida que el usuario exista y esté activo
+    - Valida que no sea el último administrador activo
+    - Valida que no tenga reservas activas
+    """
+    motivo = request_data.motivo if request_data else None
+    
+    try:
+        resultado = service.desactivar_usuario(
+            admin_id=current_user_id,
+            user_id=id,
+            motivo=motivo
+        )
+        return {
+            "success": True,
+            "statusCode": HttpStatus.OK,
+            "message": "Usuario desactivado exitosamente",
+            "data": resultado
+        }
+    except ValueError as e:
+        error_msg = str(e)
+        
+        if error_msg == ErrorCodes.ADMIN_REQUIRED:
+            return JSONResponse(
+                status_code=HttpStatus.FORBIDDEN,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.FORBIDDEN,
+                    "message": "Acceso denegado. Se requieren privilegios de administrador",
+                    "error": {
+                        "code": "ADMIN_REQUIRED",
+                        "details": "Solo los administradores pueden desactivar usuarios"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.CANNOT_DESACTIVATE_SELF:
+            return JSONResponse(
+                status_code=HttpStatus.FORBIDDEN,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.FORBIDDEN,
+                    "message": "No puede desactivarse a sí mismo",
+                    "error": {
+                        "code": "CANNOT_DESACTIVATE_SELF",
+                        "details": "Un administrador no puede desactivar su propia cuenta"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.USER_NOT_FOUND:
+            return JSONResponse(
+                status_code=HttpStatus.NOT_FOUND,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.NOT_FOUND,
+                    "message": "Usuario no encontrado",
+                    "error": {
+                        "code": "USER_NOT_FOUND",
+                        "details": "No existe un usuario con el ID proporcionado"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.USER_ALREADY_INACTIVE:
+            return JSONResponse(
+                status_code=HttpStatus.BAD_REQUEST,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.BAD_REQUEST,
+                    "message": "El usuario ya está inactivo",
+                    "error": {
+                        "code": "USER_ALREADY_INACTIVE",
+                        "details": f"El usuario con ID {id} ya se encuentra desactivado"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.LAST_ADMIN_CANNOT_BE_DEACTIVATED:
+            return JSONResponse(
+                status_code=HttpStatus.FORBIDDEN,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.FORBIDDEN,
+                    "message": "No se puede desactivar al único administrador activo",
+                    "error": {
+                        "code": "LAST_ADMIN_CANNOT_BE_DEACTIVATED",
+                        "details": "El sistema debe tener al menos un administrador activo"
+                    }
+                }
+            )
+        
+        if error_msg == ErrorCodes.USER_HAS_ACTIVE_RESERVATIONS:
+            return JSONResponse(
+                status_code=HttpStatus.BAD_REQUEST,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.BAD_REQUEST,
+                    "message": "No se puede desactivar un usuario con reservas activas",
+                    "error": {
+                        "code": "USER_HAS_ACTIVE_RESERVATIONS",
+                        "details": "El usuario tiene reservas en curso. Cancélelas antes de desactivar."
+                    }
+                }
+            )
+        
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Error al desactivar usuario",
+                "error": {
+                    "code": ErrorCodes.INVALID_DATA,
+                    "details": error_msg
+                }
+            }
+        )
+@router.get("/debug/usuarios")
+async def debug_usuarios():
+    from repository.usuario_repository import UsuarioRepository
+    repo = UsuarioRepository()
+    return {
+        "usuarios": [
+            {"id": u.id, "email": u.correo, "rol": u.rol, "estado": u.estado}
+            for u in repo._usuarios
+        ]
+    }    
