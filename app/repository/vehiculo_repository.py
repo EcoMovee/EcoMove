@@ -104,3 +104,24 @@ class VehiculoRepository:
         if vehiculo_id:
             return [h for h in self._historial if h["vehiculo_id"] == vehiculo_id]
         return self._historial
+    
+    
+    
+    # ==================== HU-008: Bloqueo de vehículos en mantenimiento ====================
+
+    def get_by_estado(self, estado: str) -> list:
+        """Obtener vehículos por estado"""
+        resultado = []
+        for vehiculo in self._db.values():
+            if vehiculo.estado == estado:
+                resultado.append(vehiculo)
+        return resultado
+
+    def get_disponibles_excluyendo_mantenimiento(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos disponibles (excluye mantenimiento y en_uso)"""
+        disponibles = []
+        for vehiculo in self._db.values():
+            if vehiculo.estado == "disponible":
+                if tipo is None or vehiculo.tipo == tipo:
+                    disponibles.append(vehiculo)
+        return disponibles
