@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
