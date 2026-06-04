@@ -33,5 +33,16 @@ class PagoRepository:
         self._db[self._next_id] = pago
         self._next_id += 1
         return pago
-    
 
+    # ==================== HU-014: Consulta de pagos ====================
+
+    def get_by_id(self, pago_id: int) -> Optional[dict]:
+        """Obtener pago por ID"""
+        return self._db.get(pago_id)
+
+    def get_by_reserva_id(self, reserva_id: int) -> Optional[dict]:
+        """Obtener pago por ID de reserva"""
+        for pago in self._db.values():
+            if pago["reserva_id"] == reserva_id:
+                return pago
+        return None
