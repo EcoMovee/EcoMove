@@ -32,3 +32,17 @@ class PagoResponse(BaseModel):
     fecha_pago: datetime
     transaccion_id: str
     reserva_confirmada: bool
+    
+# ==================== HU-014: Consulta de pagos ====================
+
+class PagoResponseDetail(BaseModel):
+    id: int
+    reserva_id: int
+    usuario_id: int
+    usuario_nombre: Optional[str] = None
+    monto: float
+    metodo_pago: str
+    estado: str
+    transaccion_id: str
+    fecha_pago: datetime
+    motivo_rechazo: Optional[str] = None

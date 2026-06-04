@@ -142,3 +142,86 @@ def procesar_pago(
                 }
             }
         )
+        
+# ==================== HU-014: Consulta de pagos ====================
+
+@router.get("/{pago_id}", status_code=status.HTTP_200_OK)
+def get_pago_by_id(
+    pago_id: int,
+    token_payload: dict = Depends(verify_token)
+):
+    """Consultar un pago por su ID. Requiere autenticación JWT."""
+    try:
+        pago = service.get_pago_by_id(pago_id)
+        return {
+            "success": True,
+            "statusCode": 200,
+            "message": "Pago encontrado",
+            "data": {
+                "id": pago["id"],
+                "reserva_id": pago["reserva_id"],
+                "usuario_id": pago["usuario_id"],
+                "monto": pago["monto"],
+                "metodo_pago": pago["metodo_pago"],
+                "estado": pago["estado"],
+                "transaccion_id": pago["transaccion_id"],
+                "fecha_pago": pago["fecha_pago"].isoformat(),
+                "motivo_rechazo": pago.get("motivo_rechazo")
+            }
+        }
+    except ValueError as e:
+        if str(e) == "PAYMENT_NOT_FOUND":
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "success": False,
+                    "statusCode": 404,
+                    "message": "Pago no encontrado",
+                    "error": {
+                        "code": "PAYMENT_NOT_FOUND",
+                        "details": "No existe un pago con el ID proporcionado"
+                    }
+                }
+            )
+        raise HTTPException(status_code=500, detail={"message": str(e)})
+
+
+@router.get("/reserva/{reserva_id}", status_code=status.HTTP_200_OK)
+def get_pago_by_reserva(
+    reserva_id: int,
+    token_payload: dict = Depends(verify_token)
+):
+    """Consultar un pago por ID de reserva. Requiere autenticación JWT."""
+    try:
+        pago = service.get_pago_by_reserva_id(reserva_id)
+        return {
+            "success": True,
+            "statusCode": 200,
+            "message": "Pago encontrado",
+            "data": {
+                "id": pago["id"],
+                "reserva_id": pago["reserva_id"],
+                "usuario_id": pago["usuario_id"],
+                "monto": pago["monto"],
+                "metodo_pago": pago["metodo_pago"],
+                "estado": pago["estado"],
+                "transaccion_id": pago["transaccion_id"],
+                "fecha_pago": pago["fecha_pago"].isoformat(),
+                "motivo_rechazo": pago.get("motivo_rechazo")
+            }
+        }
+    except ValueError as e:
+        if str(e) == "PAYMENT_NOT_FOUND":
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "success": False,
+                    "statusCode": 404,
+                    "message": "Pago no encontrado",
+                    "error": {
+                        "code": "PAYMENT_NOT_FOUND",
+                        "details": "No existe un pago asociado a la reserva proporcionada"
+                    }
+                }
+            )
+        raise HTTPException(status_code=500, detail={"message": str(e)})
