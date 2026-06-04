@@ -83,3 +83,19 @@ class PagoService:
             )
             
             raise ValueError(f"PAYMENT_REJECTED:{resultado_pasarela['message']}")
+
+    # ==================== HU-014: Consulta de pagos ====================
+
+    def get_pago_by_id(self, pago_id: int) -> dict:
+        """Obtener un pago por ID"""
+        pago = self.pago_repo.get_by_id(pago_id)
+        if not pago:
+            raise ValueError("PAYMENT_NOT_FOUND")
+        return pago
+
+    def get_pago_by_reserva_id(self, reserva_id: int) -> dict:
+        """Obtener un pago por ID de reserva"""
+        pago = self.pago_repo.get_by_reserva_id(reserva_id)
+        if not pago:
+            raise ValueError("PAYMENT_NOT_FOUND")
+        return pago
