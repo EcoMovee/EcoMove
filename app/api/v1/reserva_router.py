@@ -256,3 +256,102 @@ async def crear_reserva(
                 "error": {"code": "INTERNAL_ERROR", "details": str(e)}
             }
         )
+        
+# ========== HU-011: CANCELAR RESERVA ==========
+@router.post("/{reserva_id}/cancelar")
+async def cancelar_reserva(
+    reserva_id: int,
+    current_user_id: int = Depends(get_current_user)
+):
+    try:
+        resultado = service.cancelar_reserva(
+            usuario_id=current_user_id,
+            reserva_id=reserva_id
+        )
+        
+        return {
+            "success": True,
+            "statusCode": HttpStatus.OK,
+            "message": resultado.pop("mensaje"),
+            "data": resultado
+        }
+    
+    except ValueError as e:
+        error_msg = str(e)
+        
+        if error_msg == "RESERVATION_NOT_FOUND":
+            return JSONResponse(
+                status_code=HttpStatus.NOT_FOUND,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.NOT_FOUND,
+                    "message": "Reserva no encontrada",
+                    "error": {
+                        "code": "RESERVATION_NOT_FOUND",
+                        "details": "No existe una reserva con el ID proporcionado"
+                    }
+                }
+            )
+        
+        if error_msg == "NOT_RESERVATION_OWNER":
+            return JSONResponse(
+                status_code=HttpStatus.FORBIDDEN,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.FORBIDDEN,
+                    "message": "No autorizado",
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "details": "No tienes permiso para cancelar esta reserva"
+                    }
+                }
+            )
+        
+        if error_msg == "INVALID_RESERVATION_STATUS":
+            return JSONResponse(
+                status_code=HttpStatus.BAD_REQUEST,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.BAD_REQUEST,
+                    "message": "No se puede cancelar la reserva",
+                    "error": {
+                        "code": "INVALID_RESERVATION_STATUS",
+                        "details": "La reserva ya está finalizada o cancelada y no puede cancelarse nuevamente"
+                    }
+                }
+            )
+        
+        if error_msg == "RESERVATION_ALREADY_STARTED":
+            return JSONResponse(
+                status_code=HttpStatus.BAD_REQUEST,
+                content={
+                    "success": False,
+                    "statusCode": HttpStatus.BAD_REQUEST,
+                    "message": "No se puede cancelar la reserva",
+                    "error": {
+                        "code": "RESERVATION_ALREADY_STARTED",
+                        "details": "La reserva ya ha comenzado o está en curso"
+                    }
+                }
+            )
+        
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Error al cancelar reserva",
+                "error": {"code": "INVALID_DATA", "details": error_msg}
+            }
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=HttpStatus.INTERNAL_ERROR,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.INTERNAL_ERROR,
+                "message": "Error interno del servidor",
+                "error": {"code": "INTERNAL_ERROR", "details": str(e)}
+            }
+        )

@@ -120,3 +120,68 @@ class ReservaService:
             "estado": reserva_creada.estado.value,
             "fecha_creacion": reserva_creada.fecha_creacion.isoformat()
         }
+        
+    # ========== HU-011: CANCELAR RESERVA ==========
+    def cancelar_reserva(self, usuario_id: int, reserva_id: int) -> dict:
+        """Cancela una reserva existente"""
+        from datetime import datetime
+        
+        # Buscar la reserva
+        reserva = self.reserva_repo.get_by_id(reserva_id)
+        if not reserva:
+            raise ValueError("RESERVATION_NOT_FOUND")
+        
+        # Verificar que la reserva pertenezca al usuario
+        if reserva.usuario_id != usuario_id:
+            raise ValueError("NOT_RESERVATION_OWNER")
+        
+        # Verificar que la reserva esté activa
+        if reserva.estado not in [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA]:
+            raise ValueError("INVALID_RESERVATION_STATUS")
+        
+        # Calcular anticipación en horas
+        hora_inicio_dt = datetime.combine(reserva.fecha, reserva.hora_inicio)
+        ahora = datetime.now()
+        
+        if hora_inicio_dt <= ahora:
+            raise ValueError("RESERVATION_ALREADY_STARTED")
+        
+        anticipacion_horas = (hora_inicio_dt - ahora).total_seconds() / 3600
+        
+        # Calcular penalización
+        penalizacion = False
+        monto_penalizacion = 0.0
+        reembolso = reserva.costo_estimado
+        
+        if anticipacion_horas < 2:
+            penalizacion = True
+            monto_penalizacion = round(reserva.costo_estimado * 0.20, 2)
+            reembolso = round(reserva.costo_estimado - monto_penalizacion, 2)
+        
+        # Cambiar estado a cancelada
+        reserva.estado = EstadoReserva.CANCELADA
+        reserva.fecha_cancelacion = ahora
+        reserva.penalizacion_aplicada = penalizacion
+        reserva.penalizacion_monto = monto_penalizacion
+        reserva.reembolso_procesado = reembolso
+        
+        # Guardar cambios
+        self.reserva_repo.update(reserva_id, reserva)
+        
+        # Determinar mensaje
+        if penalizacion:
+            mensaje = f"Reserva cancelada con penalización del 20%"
+        else:
+            mensaje = "Reserva cancelada exitosamente"
+        
+        return {
+            "reserva_id": reserva.id,
+            "estado_anterior": "confirmada" if reserva.estado == EstadoReserva.CANCELADA else "pendiente",
+            "estado_nuevo": reserva.estado.value,
+            "fecha_cancelacion": reserva.fecha_cancelacion.isoformat(),
+            "anticipacion_horas": round(anticipacion_horas, 2),
+            "penalizacion_aplicada": penalizacion,
+            "penalizacion_monto": monto_penalizacion,
+            "reembolso_procesado": reembolso,
+            "mensaje": mensaje
+        }

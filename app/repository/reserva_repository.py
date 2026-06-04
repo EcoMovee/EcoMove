@@ -20,18 +20,25 @@ class ReservaRepository:
         return None
     
     def get_activas_by_usuario(self, usuario_id: int) -> List[Reserva]:
-        """Obtiene reservas activas de un usuario (pendiente, confirmada, en_curso)"""
         estados_activos = [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]
         return [r for r in self._reservas if r.usuario_id == usuario_id and r.estado in estados_activos]
     
     def get_activas_by_vehiculo(self, vehiculo_id: int, fecha: date, hora_inicio: time, hora_fin: time) -> List[Reserva]:
-        """Obtiene reservas activas que se superponen con el horario solicitado"""
         activas = []
+        estados_activos = [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]
+        
         for reserva in self._reservas:
             if reserva.vehiculo_id == vehiculo_id and reserva.fecha == fecha:
-                # Solo reservas activas (no canceladas ni finalizadas)
-                if reserva.estado in [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]:
-                    # Verificar superposición de horarios
+                if reserva.estado in estados_activos:
                     if not (hora_fin <= reserva.hora_inicio or hora_inicio >= reserva.hora_fin):
                         activas.append(reserva)
         return activas
+    
+    def update(self, reserva_id: int, reserva: Reserva):
+        """Actualiza una reserva existente"""
+        for i, r in enumerate(self._reservas):
+            if r.id == reserva_id:
+                reserva.id = reserva_id
+                self._reservas[i] = reserva
+                return reserva
+        return None
