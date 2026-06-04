@@ -3,14 +3,17 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime, date, time
 from typing import Optional
-from service.reserva_service import ReservaService
-from core.dependencies import get_current_user
-from core.constants import HttpStatus, ErrorCodes
-from repository.usuario_repository import UsuarioRepository
+from app.service.reserva_service import ReservaService
+from app.core.dependencies import get_current_user
+from app.core.constants import HttpStatus, ErrorCodes
+from app.repository.usuario_repository import UsuarioRepository
+from app.repository.reserva_repository import reserva_repo
+from app.service.reserva_service import ReservaService
 
-router = APIRouter(prefix="/api/v1/reservas", tags=["Reservas"])
+router = APIRouter(prefix="/reservas", tags=["Reservas"])
 service = ReservaService()
 usuario_repo = UsuarioRepository()
+service = ReservaService(reserva_repo)
 
 # ========== HU-009: VALIDAR DISPONIBILIDAD ==========
 @router.get("/disponibilidad")
