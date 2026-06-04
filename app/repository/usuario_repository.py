@@ -1,5 +1,6 @@
 from typing import List, Optional
 from domain.usuario_domain import Usuario
+from app.domain.usuario_domain import Usuario
 from datetime import datetime
 
 class UsuarioRepository:

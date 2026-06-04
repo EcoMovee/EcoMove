@@ -3,30 +3,24 @@ from datetime import datetime
 from domain.vehiculo_domain import Vehiculo, VehiculoCreate
 
 class VehiculoRepository:
-    _instance = None
-    _db = None
-    _next_id = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._db = {}
-            cls._instance._next_id = 1
-        return cls._instance
     
     def __init__(self):
-        pass
+        self._db: Dict[int, Vehiculo] = {}
+        self._next_id: int = 1
 
     def get_by_id(self, id: int) -> Optional[Vehiculo]:
+        """Obtener vehículo por ID"""
         return self._db.get(id)
 
     def get_by_modelo(self, modelo: str) -> Optional[Vehiculo]:
+        """Buscar vehículo por modelo (único)"""
         for vehiculo in self._db.values():
             if vehiculo.modelo.lower() == modelo.lower():
                 return vehiculo
         return None
 
     def create(self, data: VehiculoCreate) -> Vehiculo:
+        """Crear un nuevo vehículo"""
         vehiculo = Vehiculo(
             id=self._next_id,
             tipo=data.tipo,
@@ -42,6 +36,7 @@ class VehiculoRepository:
         return vehiculo
     
     def get_disponibles(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos con estado 'disponible'"""
         disponibles = []
         for vehiculo in self._db.values():
             if vehiculo.estado == "disponible":
@@ -50,6 +45,7 @@ class VehiculoRepository:
         return disponibles
 
     def get_disponibles_con_ubicacion(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos disponibles que tienen coordenadas"""
         disponibles = []
         for vehiculo in self._db.values():
             if vehiculo.estado == "disponible":
@@ -60,9 +56,11 @@ class VehiculoRepository:
         return disponibles
     
     def get_vehiculo_by_id(self, vehiculo_id: int):
+        """Obtener vehículo por ID (alias)"""
         return self._db.get(vehiculo_id)
 
     def update_estado(self, vehiculo_id: int, nuevo_estado: str):
+        """Actualizar estado del vehículo"""
         vehiculo = self._db.get(vehiculo_id)
         if vehiculo:
             estado_anterior = vehiculo.estado
@@ -72,6 +70,7 @@ class VehiculoRepository:
 
     def registrar_historial(self, vehiculo_id: int, estado_anterior: str, 
                             estado_nuevo: str, admin_id: int, reservas_afectadas: int = 0):
+        """Registrar cambio de estado en el historial"""
         if not hasattr(self, '_historial'):
             self._historial = []
         self._historial.append({
@@ -86,9 +85,11 @@ class VehiculoRepository:
         return True
 
     def get_reservas_futuras_count(self, vehiculo_id: int) -> int:
+        """Contar reservas futuras de un vehículo"""
         return 0
 
     def get_historial(self, vehiculo_id: int = None):
+        """Obtener historial de cambios"""
         if not hasattr(self, '_historial'):
             return []
         if vehiculo_id:
@@ -96,6 +97,7 @@ class VehiculoRepository:
         return self._historial
     
     def get_by_estado(self, estado: str) -> list:
+        """Obtener vehículos por estado"""
         resultado = []
         for vehiculo in self._db.values():
             if vehiculo.estado == estado:
@@ -103,6 +105,7 @@ class VehiculoRepository:
         return resultado
 
     def get_disponibles_excluyendo_mantenimiento(self, tipo: Optional[str] = None) -> list:
+        """Obtener vehículos disponibles (excluye mantenimiento y en_uso)"""
         disponibles = []
         for vehiculo in self._db.values():
             if vehiculo.estado == "disponible":

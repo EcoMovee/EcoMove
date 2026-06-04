@@ -5,6 +5,9 @@ from typing import Optional
 from service.usuario_service import UsuarioService
 from core.constants import ErrorCodes, HttpStatus
 from core.dependencies import get_current_user
+from app.service.usuario_service import UsuarioService
+from app.core.constants import ErrorCodes, HttpStatus
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["Usuarios"])
 service = UsuarioService()
