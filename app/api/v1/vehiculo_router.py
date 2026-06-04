@@ -4,8 +4,6 @@ from service.vehiculo_service import VehiculoService
 from repository.vehiculo_repository import VehiculoRepository
 from core.security import verify_admin
 from typing import Optional
-from domain.vehiculo_domain import VehiculoCreate, EstadoUpdateRequest
-from core.security import verify_admin, verify_token
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
 

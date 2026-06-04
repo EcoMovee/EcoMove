@@ -31,7 +31,6 @@ class ErrorCodes:
     
     #HU-010
     MAX_ACTIVE_RESERVATIONS = "MAX_ACTIVE_RESERVATIONS"
-    
 
 class HttpStatus:
     """Códigos HTTP"""

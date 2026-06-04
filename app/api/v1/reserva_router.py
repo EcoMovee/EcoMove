@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -23,6 +24,28 @@ async def validar_disponibilidad(
 ):
     # ... (código existente de HU-009)
     try:
+=======
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
+from datetime import datetime, date, time
+from service.reserva_service import ReservaService
+from core.dependencies import get_current_user
+from core.constants import HttpStatus, ErrorCodes
+
+router = APIRouter(prefix="/api/v1/reservas", tags=["Reservas"])
+service = ReservaService()
+
+@router.get("/disponibilidad")
+async def validar_disponibilidad(
+    vehiculo_id: int = Query(..., description="ID del vehículo"),
+    fecha: str = Query(..., description="Fecha (YYYY-MM-DD)"),
+    hora_inicio: str = Query(..., description="Hora de inicio (HH:MM)"),
+    hora_fin: str = Query(..., description="Hora de fin (HH:MM)"),
+    current_user_id: int = Depends(get_current_user)
+):
+    try:
+        # Convertir parámetros
+>>>>>>> development
         fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
         hora_inicio_obj = datetime.strptime(hora_inicio, "%H:%M").time()
         hora_fin_obj = datetime.strptime(hora_fin, "%H:%M").time()
@@ -51,8 +74,15 @@ async def validar_disponibilidad(
                     "data": resultado
                 }
             )
+<<<<<<< HEAD
     except ValueError as e:
         error_msg = str(e)
+=======
+    
+    except ValueError as e:
+        error_msg = str(e)
+        
+>>>>>>> development
         if error_msg == ErrorCodes.VEHICLE_NOT_FOUND:
             return JSONResponse(
                 status_code=HttpStatus.NOT_FOUND,
@@ -60,36 +90,70 @@ async def validar_disponibilidad(
                     "success": False,
                     "statusCode": HttpStatus.NOT_FOUND,
                     "message": "Vehículo no encontrado",
+<<<<<<< HEAD
                     "error": {"code": "VEHICLE_NOT_FOUND"}
                 }
             )
         if error_msg == "PAST_DATE":
+=======
+                    "error": {
+                        "code": "VEHICLE_NOT_FOUND",
+                        "details": f"El vehículo con ID {vehiculo_id} no existe"
+                    }
+                }
+            )
+        
+        if error_msg == "FECHA_PASADA":
+>>>>>>> development
             return JSONResponse(
                 status_code=HttpStatus.BAD_REQUEST,
                 content={
                     "success": False,
                     "statusCode": HttpStatus.BAD_REQUEST,
                     "message": "Fecha inválida",
+<<<<<<< HEAD
                     "error": {"code": "INVALID_DATA", "details": "No se puede reservar en una fecha anterior a la actual"}
                 }
             )
         if error_msg == "INVALID_HOURS":
+=======
+                    "error": {
+                        "code": "INVALID_DATA",
+                        "details": "No se puede reservar en una fecha anterior a la actual"
+                    }
+                }
+            )
+        
+        if error_msg == "HORARIO_INVALIDO":
+>>>>>>> development
             return JSONResponse(
                 status_code=HttpStatus.BAD_REQUEST,
                 content={
                     "success": False,
                     "statusCode": HttpStatus.BAD_REQUEST,
                     "message": "Horario inválido",
+<<<<<<< HEAD
                     "error": {"code": "INVALID_DATA", "details": "La hora de inicio debe ser menor que la hora de fin"}
                 }
             )
         if error_msg == "MIN_DURATION":
+=======
+                    "error": {
+                        "code": "INVALID_DATA",
+                        "details": "La hora de inicio debe ser menor que la hora de fin"
+                    }
+                }
+            )
+        
+        if error_msg == "DURACION_INSUFICIENTE":
+>>>>>>> development
             return JSONResponse(
                 status_code=HttpStatus.BAD_REQUEST,
                 content={
                     "success": False,
                     "statusCode": HttpStatus.BAD_REQUEST,
                     "message": "Duración inválida",
+<<<<<<< HEAD
                     "error": {"code": "INVALID_DATA", "details": "La duración mínima de reserva es de 30 minutos"}
                 }
             )
@@ -193,10 +257,16 @@ async def crear_reserva(
                     "error": {
                         "code": "MAX_ACTIVE_RESERVATIONS",
                         "details": "Has alcanzado el límite de 3 reservas activas. Cancela una reserva existente para continuar"
+=======
+                    "error": {
+                        "code": "INVALID_DATA",
+                        "details": "La duración mínima de reserva es de 30 minutos"
+>>>>>>> development
                     }
                 }
             )
         
+<<<<<<< HEAD
         if error_msg == "VEHICLE_UNAVAILABLE":
             return JSONResponse(
                 status_code=HttpStatus.CONFLICT,
@@ -236,13 +306,23 @@ async def crear_reserva(
                 }
             )
         
+=======
+>>>>>>> development
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
+<<<<<<< HEAD
                 "message": "Error al crear reserva",
                 "error": {"code": ErrorCodes.INVALID_DATA, "details": error_msg}
+=======
+                "message": "Error al validar disponibilidad",
+                "error": {
+                    "code": ErrorCodes.INVALID_DATA,
+                    "details": error_msg
+                }
+>>>>>>> development
             }
         )
     
@@ -253,6 +333,13 @@ async def crear_reserva(
                 "success": False,
                 "statusCode": HttpStatus.INTERNAL_ERROR,
                 "message": "Error interno del servidor",
+<<<<<<< HEAD
                 "error": {"code": "INTERNAL_ERROR", "details": str(e)}
+=======
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "details": str(e)
+                }
+>>>>>>> development
             }
         )

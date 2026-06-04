@@ -27,11 +27,10 @@ class ReservaRepository:
     def get_activas_by_vehiculo(self, vehiculo_id: int, fecha: date, hora_inicio: time, hora_fin: time) -> List[Reserva]:
         """Obtiene reservas activas que se superponen con el horario solicitado"""
         activas = []
-        estados_activos = [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]
-        
         for reserva in self._reservas:
             if reserva.vehiculo_id == vehiculo_id and reserva.fecha == fecha:
-                if reserva.estado in estados_activos:
+                # Solo reservas activas (no canceladas ni finalizadas)
+                if reserva.estado in [EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]:
                     # Verificar superposición de horarios
                     if not (hora_fin <= reserva.hora_inicio or hora_inicio >= reserva.hora_fin):
                         activas.append(reserva)

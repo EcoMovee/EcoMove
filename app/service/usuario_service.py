@@ -6,7 +6,6 @@ from datetime import datetime, date, timedelta
 from core.constants import ErrorCodes
 from core.security import verify_password, create_access_token
 
-
 class UsuarioService:
     def __init__(self):
         self.repository = UsuarioRepository()
