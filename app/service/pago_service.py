@@ -1,6 +1,8 @@
 from typing import Dict, Any
 import uuid
 import threading
+from datetime import datetime
+from app.service.notificacion_service import NotificacionService
 
 
 class PagoService:
@@ -70,6 +72,39 @@ class PagoService:
                 )
                 self.reserva_repo.update_estado(data.reserva_id, "confirmada")
                 
+                # ==================== HU-016: NOTIFICACIÓN ====================
+                # Generar notificación para respuesta
+                notificacion = {
+                    "enviada": True,
+                    "mensaje": "Tu pago ha sido aprobado. Ya puedes acceder al vehículo."
+                }
+                
+                # Enviar correo asíncrono
+                asunto = f"EcoMove - Resultado de tu pago #{pago['id']}"
+                cuerpo = f"""
+Hola Usuario {usuario_id},
+
+Tu pago ha sido procesado exitosamente.
+
+Detalles de la transacción:
+- Pago ID: {pago['id']}
+- Reserva ID: {data.reserva_id}
+- Monto: ${data.monto:,.2f}
+- Fecha: {pago['fecha_pago'].strftime('%d/%m/%Y %H:%M:%S')}
+- Método de pago: {data.metodo_pago}
+- Estado: APROBADO
+
+Ya puedes acceder al vehículo escaneando el código QR.
+
+Gracias por usar EcoMove.
+"""
+                NotificacionService.enviar_correo_asincrono(
+                    destinatario=f"usuario{usuario_id}@example.com",
+                    asunto=asunto,
+                    cuerpo=cuerpo
+                )
+                # ============================================================
+                
                 return {
                     "success": True,
                     "statusCode": 200,
@@ -82,11 +117,12 @@ class PagoService:
                         "estado": "aprobado",
                         "fecha_pago": pago["fecha_pago"],
                         "transaccion_id": resultado_pasarela["transaccion_id"],
-                        "reserva_confirmada": True
+                        "reserva_confirmada": True,
+                        "notificacion": notificacion
                     }
                 }
             else:
-                self.pago_repo.create_pago(
+                pago = self.pago_repo.create_pago(
                     reserva_id=data.reserva_id,
                     usuario_id=usuario_id,
                     monto=data.monto,
@@ -95,6 +131,34 @@ class PagoService:
                     transaccion_id=resultado_pasarela["transaccion_id"],
                     motivo_rechazo=resultado_pasarela["message"]
                 )
+                
+                # ==================== HU-016: NOTIFICACIÓN PARA RECHAZO ====================
+                # Enviar correo asíncrono de rechazo
+                asunto = f"EcoMove - Resultado de tu pago #{pago['id']}"
+                cuerpo = f"""
+Hola Usuario {usuario_id},
+
+Tu pago ha sido rechazado.
+
+Detalles de la transacción:
+- Pago ID: {pago['id']}
+- Reserva ID: {data.reserva_id}
+- Monto: ${data.monto:,.2f}
+- Fecha: {pago['fecha_pago'].strftime('%d/%m/%Y %H:%M:%S')}
+- Método de pago: {data.metodo_pago}
+- Estado: RECHAZADO
+- Motivo: {resultado_pasarela['message']}
+
+Puedes reintentar el pago desde la aplicación.
+
+Gracias por usar EcoMove.
+"""
+                NotificacionService.enviar_correo_asincrono(
+                    destinatario=f"usuario{usuario_id}@example.com",
+                    asunto=asunto,
+                    cuerpo=cuerpo
+                )
+                # ============================================================
                 
                 raise ValueError(f"PAYMENT_REJECTED:{resultado_pasarela['message']}")
 
