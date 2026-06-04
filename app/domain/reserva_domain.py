@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field, validator
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, date, time
@@ -17,7 +18,16 @@ class Reserva(BaseModel):
     fecha: date
     hora_inicio: time
     hora_fin: time
-    duracion_horas: float
-    costo_estimado: float
+    duracion_horas: float = Field(..., gt=0)
+    costo_estimado: float = Field(..., gt=0)
     estado: EstadoReserva = EstadoReserva.PENDIENTE
     fecha_creacion: datetime = Field(default_factory=datetime.now)
+    fecha_cancelacion: Optional[datetime] = None
+    
+    @validator('hora_fin')
+    def validar_horario(cls, v, values):
+        if 'hora_inicio' in values:
+            if v <= values['hora_inicio']:
+                raise ValueError("La hora de fin debe ser mayor a la hora de inicio")
+        return v
+    
