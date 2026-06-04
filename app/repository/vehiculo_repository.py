@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 from datetime import datetime
-from domain.vehiculo_domain import Vehiculo, VehiculoCreate
+from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
 
 class VehiculoRepository:
     _instance = None
