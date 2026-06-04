@@ -16,6 +16,8 @@ def procesar_pago(
     data: PagoRequest,
     token_payload: dict = Depends(verify_token)
 ):
+    """Procesa el pago de una reserva. Requiere autenticación JWT."""
+    
     usuario_id = token_payload.get("id", 1)
     
     try:
@@ -86,16 +88,21 @@ def procesar_pago(
                 }
             )
         
-        if error_msg == "PAYMENT_ALREADY_EXISTS":
+        if error_msg.startswith("PAYMENT_ALREADY_EXISTS"):
+            partes = error_msg.split(":")
+            pago_id = partes[1] if len(partes) > 1 else "desconocido"
+            fecha_pago = partes[2] if len(partes) > 2 else "desconocida"
             raise HTTPException(
                 status_code=400,
                 detail={
                     "success": False,
                     "statusCode": 400,
-                    "message": "La reserva ya ha sido pagada",
+                    "message": "Esta reserva ya ha sido pagada",
                     "error": {
                         "code": "PAYMENT_ALREADY_EXISTS",
-                        "details": "Esta reserva ya tiene un pago aprobado"
+                        "details": "La reserva ya tiene un pago aprobado asociado",
+                        "pago_id": int(pago_id) if str(pago_id).isdigit() else pago_id,
+                        "fecha_pago": fecha_pago
                     }
                 }
             )
@@ -142,7 +149,8 @@ def procesar_pago(
                 }
             }
         )
-        
+
+
 # ==================== HU-014: Consulta de pagos ====================
 
 @router.get("/{pago_id}", status_code=status.HTTP_200_OK)
