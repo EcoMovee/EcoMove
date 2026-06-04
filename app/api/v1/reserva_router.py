@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -24,28 +23,6 @@ async def validar_disponibilidad(
 ):
     # ... (código existente de HU-009)
     try:
-=======
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
-from datetime import datetime, date, time
-from service.reserva_service import ReservaService
-from core.dependencies import get_current_user
-from core.constants import HttpStatus, ErrorCodes
-
-router = APIRouter(prefix="/api/v1/reservas", tags=["Reservas"])
-service = ReservaService()
-
-@router.get("/disponibilidad")
-async def validar_disponibilidad(
-    vehiculo_id: int = Query(..., description="ID del vehículo"),
-    fecha: str = Query(..., description="Fecha (YYYY-MM-DD)"),
-    hora_inicio: str = Query(..., description="Hora de inicio (HH:MM)"),
-    hora_fin: str = Query(..., description="Hora de fin (HH:MM)"),
-    current_user_id: int = Depends(get_current_user)
-):
-    try:
-        # Convertir parámetros
->>>>>>> development
         fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
         hora_inicio_obj = datetime.strptime(hora_inicio, "%H:%M").time()
         hora_fin_obj = datetime.strptime(hora_fin, "%H:%M").time()
