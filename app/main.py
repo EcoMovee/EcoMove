@@ -5,11 +5,6 @@ from api.v1.reserva_router import router as reserva_router
 from repository.usuario_repository import UsuarioRepository
 import bcrypt
 from domain.usuario_domain import Usuario
-from app.api.v1.usuario_router import router as usuario_router
-from app.api.v1.vehiculo_router import router as vehiculo_router
-from app.repository.usuario_repository import UsuarioRepository
-import bcrypt
-from app.domain.usuario_domain import Usuario
 
 app = FastAPI(
     title="EcoMove API",
