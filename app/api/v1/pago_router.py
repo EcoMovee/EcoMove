@@ -133,6 +133,10 @@ def procesar_pago(
                         "code": "PAYMENT_REJECTED",
                         "details": "La transacción fue rechazada por la pasarela de pagos",
                         "motivo": motivo
+                    },
+                    "notificacion": {
+                        "enviada": True,
+                        "mensaje": "Tu pago fue rechazado. Puedes reintentar con otro método de pago."
                     }
                 }
             )
