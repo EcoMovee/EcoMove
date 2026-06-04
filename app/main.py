@@ -1,4 +1,10 @@
 from fastapi import FastAPI
+from api.v1.usuario_router import router as usuario_router
+from api.v1.vehiculo_router import router as vehiculo_router
+from api.v1.reserva_router import router as reserva_router
+from repository.usuario_repository import UsuarioRepository
+import bcrypt
+from domain.usuario_domain import Usuario
 from app.api.v1.usuario_router import router as usuario_router
 from app.api.v1.vehiculo_router import router as vehiculo_router
 from app.repository.usuario_repository import UsuarioRepository
@@ -13,6 +19,7 @@ app = FastAPI(
 
 app.include_router(usuario_router, prefix="/api/v1")
 app.include_router(vehiculo_router, prefix="/api/v1")
+app.include_router(reserva_router)
 
 # ========== CREAR ADMINISTRADOR INICIAL ==========
 repo = UsuarioRepository()

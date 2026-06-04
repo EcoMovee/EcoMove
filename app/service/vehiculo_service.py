@@ -1,3 +1,5 @@
+from domain.vehiculo_domain import Vehiculo, VehiculoCreate
+from repository.vehiculo_repository import VehiculoRepository
 from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
 from app.repository.vehiculo_repository import VehiculoRepository
 from typing import Optional
