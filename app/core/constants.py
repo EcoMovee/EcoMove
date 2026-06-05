@@ -50,6 +50,9 @@ class ErrorCodes:
     
     #HU-019
     QR_INVALID_OR_EXPIRED = "QR_INVALID_OR_EXPIRED"
+    
+    #HU-020
+    VEHICLE_MISMATCH = "VEHICLE_MISMATCH"
 
 class HttpStatus:
     """Códigos HTTP"""

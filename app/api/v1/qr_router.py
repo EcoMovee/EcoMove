@@ -6,8 +6,8 @@ from typing import Optional
 from core.dependencies import get_current_user
 from core.constants import HttpStatus, ErrorCodes
 from service.qr_service import QRService
-from repository.qr_repository import qr_repo  # ← instancia global
-from repository.reserva_repository import reserva_repo  # ← instancia global
+from repository.qr_repository import qr_repo
+from repository.reserva_repository import reserva_repo
 from domain.qr_domain import QR, EstadoQR
 from domain.reserva_domain import EstadoReserva
 from domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
@@ -24,7 +24,6 @@ async def generar_qr(
     request: GenerarQRRequest,
     current_user_id: int = Depends(get_current_user)
 ):
-    # Buscar la reserva
     reserva = reserva_repo.get_by_id(request.reserva_id)
     
     if not reserva:
@@ -41,7 +40,6 @@ async def generar_qr(
             }
         )
     
-    # Verificar que la reserva pertenezca al usuario autenticado
     if reserva.usuario_id != current_user_id:
         return JSONResponse(
             status_code=HttpStatus.FORBIDDEN,
@@ -52,7 +50,6 @@ async def generar_qr(
             }
         )
     
-    # Verificar que la reserva esté pagada (estado confirmada)
     if reserva.estado != EstadoReserva.CONFIRMADA:
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
@@ -67,7 +64,6 @@ async def generar_qr(
             }
         )
     
-    # Verificar si ya existe un QR activo
     qr_existente = qr_repo.get_activo_by_reserva_id(request.reserva_id)
     if qr_existente:
         return {
@@ -85,7 +81,6 @@ async def generar_qr(
             }
         }
     
-        # Generar nuevo QR
     contenido_firmado, firma, fecha_expiracion = qr_service.generar_contenido_firmado(
         reserva_id=reserva.id,
         vehiculo_id=reserva.vehiculo_id,
@@ -121,8 +116,7 @@ async def generar_qr(
             "fecha_generacion": qr_guardado.fecha_generacion.isoformat()
         }
     }
-    
-    # ========== HU-018: VALIDACIÓN DE QR ==========
+
 
 class ValidarQRRequest(BaseModel):
     codigo_qr: str
@@ -231,11 +225,9 @@ async def validar_qr(
             }
         )
     
-    # VERIFICAR EXPIRACIÓN POR FIN DE RESERVA (HU-019)
-    # Combinar fecha y hora para obtener datetime completo
-    from datetime import datetime as dt
-    hora_inicio_dt = dt.combine(reserva.fecha, reserva.hora_inicio)
-    hora_fin_dt = dt.combine(reserva.fecha, reserva.hora_fin)
+    # Verificar expiración por fin de reserva (HU-019)
+    hora_inicio_dt = datetime.combine(reserva.fecha, reserva.hora_inicio)
+    hora_fin_dt = datetime.combine(reserva.fecha, reserva.hora_fin)
     
     if hora_fin_dt < datetime.now():
         qr_encontrado.estado = EstadoQR.EXPIRADO
@@ -259,7 +251,9 @@ async def validar_qr(
             }
         )
     
-    # Verificar que la reserva esté activa
+    # ========== HU-020: VERIFICACIONES ==========
+    
+    # 1. Verificar que la reserva esté activa
     if reserva.estado not in [EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]:
         log_repo.create(LogEscaneoQR(
             qr_id=qr_encontrado.id,
@@ -281,7 +275,7 @@ async def validar_qr(
             }
         )
     
-    # Verificar que el usuario sea el titular
+    # 2. Verificar que el usuario sea el titular
     if reserva.usuario_id != current_user_id:
         log_repo.create(LogEscaneoQR(
             qr_id=qr_encontrado.id,
@@ -303,7 +297,37 @@ async def validar_qr(
             }
         )
     
-    # VALIDACIÓN EXITOSA - Marcar QR como usado
+    # 3. Verificar que el vehículo coincida (HU-020)
+    if reserva.vehiculo_id != qr_encontrado.vehiculo_id:
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="VEHICLE_MISMATCH",
+            ip_origen=ip_origen
+        ))
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Vehículo incorrecto",
+                "error": {
+                    "code": "VEHICLE_MISMATCH",
+                    "details": "El código QR no corresponde al vehículo que estás intentando desbloquear"
+                }
+            }
+        )
+    
+    # 4. Si la reserva está confirmada, actualizar a en_curso (HU-020)
+    if reserva.estado == EstadoReserva.CONFIRMADA:
+        reserva.estado = EstadoReserva.EN_CURSO
+        reserva.fecha_inicio_viaje = datetime.now()
+        reserva_repo.update(reserva.id, reserva)
+    
+    # ========== VALIDACIÓN EXITOSA ==========
+    
+    # Marcar QR como usado
     qr_encontrado.estado = EstadoQR.USADO
     qr_encontrado.fecha_uso = datetime.now()
     
@@ -324,13 +348,13 @@ async def validar_qr(
     return {
         "success": True,
         "statusCode": HttpStatus.OK,
-        "message": "Código QR válido. Vehículo desbloqueado",
+        "message": "Reserva activa. Vehículo desbloqueado",
         "data": {
             "reserva_id": reserva.id,
             "vehiculo_id": reserva.vehiculo_id,
             "vehiculo_modelo": vehiculo_modelo,
-            "valido": True,
-            "qr_usado": True,
-            "qr_marcado_como_usado": True
+            "estado_reserva": reserva.estado.value,
+            "inicio_reserva": hora_inicio_dt.isoformat(),
+            "fin_reserva": hora_fin_dt.isoformat()
         }
     }

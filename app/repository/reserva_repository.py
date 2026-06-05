@@ -1,6 +1,6 @@
 from datetime import datetime, date, time
 from typing import Dict, Optional, List
-
+from domain.reserva_domain import Reserva 
 
 class ReservaRepository:
     
@@ -48,8 +48,7 @@ class ReservaRepository:
             return Reserva(**reserva_dict)
         return None
 
-    def update(self, reserva_id: int, reserva):
-        """Actualizar una reserva completa"""
+    def update(self, reserva_id: int, reserva: Reserva) -> Optional[Reserva]:
         self._db[reserva_id] = {
             "id": reserva.id,
             "usuario_id": reserva.usuario_id,
@@ -64,7 +63,9 @@ class ReservaRepository:
             "fecha_cancelacion": getattr(reserva, 'fecha_cancelacion', None),
             "penalizacion_aplicada": getattr(reserva, 'penalizacion_aplicada', False),
             "penalizacion_monto": getattr(reserva, 'penalizacion_monto', 0),
-            "reembolso_procesado": getattr(reserva, 'reembolso_procesado', 0)
+            "reembolso_procesado": getattr(reserva, 'reembolso_procesado', 0),
+            "fecha_inicio_viaje": getattr(reserva, 'fecha_inicio_viaje', None),
+            "fecha_fin_viaje": getattr(reserva, 'fecha_fin_viaje', None)
         }
         return reserva
 
