@@ -10,7 +10,7 @@ class ReservaRepository:
 
     def create(self, reserva) -> dict:
         """Crear una nueva reserva"""
-        from app.domain.reserva_domain import Reserva, EstadoReserva
+        from domain.reserva_domain import Reserva, EstadoReserva
         
         reserva_dict = {
             "id": self._next_id,
@@ -31,7 +31,7 @@ class ReservaRepository:
 
     def get_by_id(self, reserva_id: int):
         """Obtener reserva por ID"""
-        from app.domain.reserva_domain import Reserva
+        from domain.reserva_domain import Reserva
         
         reserva_dict = self._db.get(reserva_id)
         if reserva_dict:
@@ -40,7 +40,7 @@ class ReservaRepository:
 
     def update_estado(self, reserva_id: int, nuevo_estado: str):
         """Actualizar el estado de una reserva"""
-        from app.domain.reserva_domain import Reserva
+        from domain.reserva_domain import Reserva
         
         reserva_dict = self._db.get(reserva_id)
         if reserva_dict:
@@ -71,7 +71,7 @@ class ReservaRepository:
     def get_activas_by_vehiculo(self, vehiculo_id: int, fecha: date, 
                                  hora_inicio: time, hora_fin: time) -> List[dict]:
         """Obtener reservas activas para un vehículo en un horario"""
-        from app.domain.reserva_domain import EstadoReserva
+        from domain.reserva_domain import EstadoReserva
         
         activas = []
         for reserva in self._db.values():
@@ -84,7 +84,7 @@ class ReservaRepository:
 
     def get_activas_by_usuario(self, usuario_id: int) -> List[dict]:
         """Obtener reservas activas de un usuario"""
-        from app.domain.reserva_domain import EstadoReserva
+        from domain.reserva_domain import EstadoReserva
         
         activas = []
         for reserva in self._db.values():
