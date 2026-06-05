@@ -66,3 +66,48 @@ class QRService:
     def generar_hash(datos: str) -> str:
         """Genera hash del contenido para almacenar"""
         return hashlib.sha256(datos.encode('utf-8')).hexdigest()
+    
+    @staticmethod
+    def validar_contenido_qr(contenido: str) -> tuple:
+        """
+        Valida el contenido del QR (firma y expiración)
+        Retorna: (es_valido, mensaje_error, datos)
+        """
+        import json
+        import hmac
+        import hashlib
+        from datetime import datetime
+        
+        try:
+            datos = json.loads(contenido)
+            
+            reserva_id = datos.get("reserva_id")
+            vehiculo_id = datos.get("vehiculo_id")
+            inicio = datos.get("inicio")
+            fin = datos.get("fin")
+            exp = datos.get("exp")
+            firma_recibida = datos.get("firma")
+            
+            # Verificar expiración
+            if exp < datetime.now().timestamp():
+                return False, "QR_EXPIRED", None
+            
+            # Recalcular firma
+            string_to_sign = f"{reserva_id}:{vehiculo_id}:{inicio}:{fin}:{exp}"
+            firma_calculada = hmac.new(
+                SECRET_KEY.encode('utf-8'),
+                string_to_sign.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if firma_calculada != firma_recibida:
+                return False, "INVALID_QR_CODE", None
+            
+            return True, "VALID", {
+                "reserva_id": reserva_id,
+                "vehiculo_id": vehiculo_id,
+                "fecha_inicio": inicio,
+                "fecha_fin": fin
+            }
+        except:
+            return False, "INVALID_QR_CODE", None
