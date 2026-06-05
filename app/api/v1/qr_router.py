@@ -119,3 +119,134 @@ async def generar_qr(
             "fecha_generacion": qr_guardado.fecha_generacion.isoformat()
         }
     }
+    
+    # ========== HU-018: VALIDACIÓN DE QR ==========
+
+class ValidarQRRequest(BaseModel):
+    codigo_qr: str
+    tipo: str = "base64"
+
+@router.post("/validar")
+async def validar_qr(
+    request: ValidarQRRequest,
+    current_user_id: int = Depends(get_current_user)
+):
+    # Buscar el QR por su código Base64
+    qr_encontrado = None
+    for qr in qr_repo._qrs:
+        if qr.codigo_qr_base64 == request.codigo_qr:
+            qr_encontrado = qr
+            break
+    
+    if not qr_encontrado:
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Código QR inválido",
+                "error": {
+                    "code": "INVALID_QR_CODE",
+                    "details": "El código QR no ha sido generado por el sistema o ha sido alterado"
+                }
+            }
+        )
+    
+    # Verificar si ya fue usado
+    if qr_encontrado.estado == EstadoQR.USADO:
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Código QR ya utilizado",
+                "error": {
+                    "code": "QR_ALREADY_USED",
+                    "details": "Este código QR ya fue utilizado para desbloquear el vehículo"
+                }
+            }
+        )
+    
+    # Verificar expiración
+    if qr_encontrado.fecha_expiracion < datetime.now():
+        qr_encontrado.estado = EstadoQR.EXPIRADO
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Código QR expirado",
+                "error": {
+                    "code": "QR_EXPIRED",
+                    "details": "El código QR ha expirado. Debes solicitar uno nuevo desde la aplicación"
+                }
+            }
+        )
+    
+    # Buscar la reserva asociada
+    reserva = reserva_repo.get_by_id(qr_encontrado.reserva_id)
+    
+    if not reserva:
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Reserva no activa",
+                "error": {
+                    "code": "RESERVATION_NOT_ACTIVE",
+                    "details": "La reserva asociada no está activa. Verifica el estado de tu reserva"
+                }
+            }
+        )
+    
+    # Verificar que la reserva esté activa
+    if reserva.estado not in [EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]:
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Reserva no activa",
+                "error": {
+                    "code": "RESERVATION_NOT_ACTIVE",
+                    "details": "La reserva asociada no está activa. Verifica el estado de tu reserva"
+                }
+            }
+        )
+    
+    # Verificar que el usuario sea el titular
+    if reserva.usuario_id != current_user_id:
+        return JSONResponse(
+            status_code=HttpStatus.FORBIDDEN,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.FORBIDDEN,
+                "message": "No autorizado",
+                "error": {
+                    "code": "NOT_RESERVATION_OWNER",
+                    "details": "Este código QR pertenece a otra reserva. No puedes desbloquear este vehículo"
+                }
+            }
+        )
+    
+    # Marcar QR como usado
+    qr_encontrado.estado = EstadoQR.USADO
+    qr_encontrado.fecha_uso = datetime.now()
+    
+    # Obtener modelo del vehículo
+    from repository.vehiculo_repository import vehiculo_repo as v_repo
+    vehiculo = v_repo.get_by_id(reserva.vehiculo_id)
+    vehiculo_modelo = vehiculo.modelo if vehiculo else f"Vehículo {reserva.vehiculo_id}"
+    
+    return {
+        "success": True,
+        "statusCode": HttpStatus.OK,
+        "message": "Código QR válido. Vehículo desbloqueado",
+        "data": {
+            "reserva_id": reserva.id,
+            "vehiculo_id": reserva.vehiculo_id,
+            "vehiculo_modelo": vehiculo_modelo,
+            "valido": True
+        }
+    }
