@@ -10,6 +10,8 @@ from repository.qr_repository import qr_repo  # ← instancia global
 from repository.reserva_repository import reserva_repo  # ← instancia global
 from domain.qr_domain import QR, EstadoQR
 from domain.reserva_domain import EstadoReserva
+from domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
+from repository.log_escaneo_repository import log_repo
 
 router = APIRouter(prefix="/api/v1/qrs", tags=["QR"])
 qr_service = QRService()
@@ -129,7 +131,8 @@ class ValidarQRRequest(BaseModel):
 @router.post("/validar")
 async def validar_qr(
     request: ValidarQRRequest,
-    current_user_id: int = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user),
+    ip_origen: str = None
 ):
     # Buscar el QR por su código Base64
     qr_encontrado = None
@@ -139,46 +142,67 @@ async def validar_qr(
             break
     
     if not qr_encontrado:
+        log_repo.create(LogEscaneoQR(
+            qr_id=0,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="QR_NOT_FOUND",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
-                "message": "Código QR inválido",
+                "message": "Código QR inválido o expirado",
                 "error": {
-                    "code": "INVALID_QR_CODE",
-                    "details": "El código QR no ha sido generado por el sistema o ha sido alterado"
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "El código QR no es válido o ya no está activo"
                 }
             }
         )
     
     # Verificar si ya fue usado
     if qr_encontrado.estado == EstadoQR.USADO:
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="QR_ALREADY_USED",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
-                "message": "Código QR ya utilizado",
+                "message": "Código QR inválido o expirado",
                 "error": {
-                    "code": "QR_ALREADY_USED",
-                    "details": "Este código QR ya fue utilizado para desbloquear el vehículo"
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "El código QR ya fue utilizado"
                 }
             }
         )
     
-    # Verificar expiración
+    # Verificar expiración por tiempo
     if qr_encontrado.fecha_expiracion < datetime.now():
         qr_encontrado.estado = EstadoQR.EXPIRADO
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="QR_EXPIRED_BY_TIME",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
-                "message": "Código QR expirado",
+                "message": "Código QR inválido o expirado",
                 "error": {
-                    "code": "QR_EXPIRED",
-                    "details": "El código QR ha expirado. Debes solicitar uno nuevo desde la aplicación"
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "El código QR ha expirado"
                 }
             }
         )
@@ -187,36 +211,85 @@ async def validar_qr(
     reserva = reserva_repo.get_by_id(qr_encontrado.reserva_id)
     
     if not reserva:
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="RESERVATION_NOT_FOUND",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
-                "message": "Reserva no activa",
+                "message": "Código QR inválido o expirado",
                 "error": {
-                    "code": "RESERVATION_NOT_ACTIVE",
-                    "details": "La reserva asociada no está activa. Verifica el estado de tu reserva"
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "La reserva asociada no existe"
+                }
+            }
+        )
+    
+    # VERIFICAR EXPIRACIÓN POR FIN DE RESERVA (HU-019)
+    # Combinar fecha y hora para obtener datetime completo
+    from datetime import datetime as dt
+    hora_inicio_dt = dt.combine(reserva.fecha, reserva.hora_inicio)
+    hora_fin_dt = dt.combine(reserva.fecha, reserva.hora_fin)
+    
+    if hora_fin_dt < datetime.now():
+        qr_encontrado.estado = EstadoQR.EXPIRADO
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="RESERVATION_ENDED",
+            ip_origen=ip_origen
+        ))
+        return JSONResponse(
+            status_code=HttpStatus.BAD_REQUEST,
+            content={
+                "success": False,
+                "statusCode": HttpStatus.BAD_REQUEST,
+                "message": "Código QR inválido o expirado",
+                "error": {
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "La reserva ya ha finalizado"
                 }
             }
         )
     
     # Verificar que la reserva esté activa
     if reserva.estado not in [EstadoReserva.CONFIRMADA, EstadoReserva.EN_CURSO]:
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="RESERVATION_NOT_ACTIVE",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.BAD_REQUEST,
             content={
                 "success": False,
                 "statusCode": HttpStatus.BAD_REQUEST,
-                "message": "Reserva no activa",
+                "message": "Código QR inválido o expirado",
                 "error": {
-                    "code": "RESERVATION_NOT_ACTIVE",
-                    "details": "La reserva asociada no está activa. Verifica el estado de tu reserva"
+                    "code": "QR_INVALID_OR_EXPIRED",
+                    "details": "La reserva no está activa"
                 }
             }
         )
     
     # Verificar que el usuario sea el titular
     if reserva.usuario_id != current_user_id:
+        log_repo.create(LogEscaneoQR(
+            qr_id=qr_encontrado.id,
+            usuario_id=current_user_id,
+            resultado=ResultadoEscaneo.FALLIDO,
+            motivo="NOT_RESERVATION_OWNER",
+            ip_origen=ip_origen
+        ))
         return JSONResponse(
             status_code=HttpStatus.FORBIDDEN,
             content={
@@ -225,14 +298,23 @@ async def validar_qr(
                 "message": "No autorizado",
                 "error": {
                     "code": "NOT_RESERVATION_OWNER",
-                    "details": "Este código QR pertenece a otra reserva. No puedes desbloquear este vehículo"
+                    "details": "Este código QR pertenece a otra reserva"
                 }
             }
         )
     
-    # Marcar QR como usado
+    # VALIDACIÓN EXITOSA - Marcar QR como usado
     qr_encontrado.estado = EstadoQR.USADO
     qr_encontrado.fecha_uso = datetime.now()
+    
+    # Registrar intento exitoso
+    log_repo.create(LogEscaneoQR(
+        qr_id=qr_encontrado.id,
+        usuario_id=current_user_id,
+        resultado=ResultadoEscaneo.EXITOSO,
+        motivo=None,
+        ip_origen=ip_origen
+    ))
     
     # Obtener modelo del vehículo
     from repository.vehiculo_repository import vehiculo_repo as v_repo
@@ -247,6 +329,8 @@ async def validar_qr(
             "reserva_id": reserva.id,
             "vehiculo_id": reserva.vehiculo_id,
             "vehiculo_modelo": vehiculo_modelo,
-            "valido": True
+            "valido": True,
+            "qr_usado": True,
+            "qr_marcado_como_usado": True
         }
     }
