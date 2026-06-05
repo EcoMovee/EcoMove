@@ -1,15 +1,15 @@
-from app.domain.reserva_domain import Reserva, EstadoReserva
-from app.repository.reserva_repository import ReservaRepository
-from app.repository.vehiculo_repository import VehiculoRepository
+from domain.reserva_domain import Reserva, EstadoReserva
+from repository.reserva_repository import ReservaRepository
+from repository.vehiculo_repository import VehiculoRepository
 from datetime import datetime, date, time, timedelta
-from app.core.constants import ErrorCodes
+from core.constants import ErrorCodes
 
 MAX_RESERVAS_ACTIVAS = 3
 
 class ReservaService:
     def __init__(self, reserva_repo: ReservaRepository = None):
         if reserva_repo is None:
-            from app.repository.reserva_repository import reserva_repo as global_reserva_repo
+            from repository.reserva_repository import reserva_repo as global_reserva_repo
             self.reserva_repo = global_reserva_repo
         else:
             self.reserva_repo = reserva_repo

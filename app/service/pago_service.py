@@ -2,7 +2,7 @@ from typing import Dict, Any
 import uuid
 import threading
 from datetime import datetime
-from app.service.notificacion_service import NotificacionService
+from service.notificacion_service import NotificacionService
 
 
 class PagoService:
