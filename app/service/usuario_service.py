@@ -1,10 +1,10 @@
-from app.domain.usuario_domain import Usuario
-from app.repository.usuario_repository import UsuarioRepository
+from domain.usuario_domain import Usuario
+from repository.usuario_repository import UsuarioRepository
 import bcrypt
 import re
 from datetime import datetime, date, timedelta
-from app.core.constants import ErrorCodes
-from app.core.security import verify_password, create_access_token
+from core.constants import ErrorCodes
+from core.security import verify_password, create_access_token
 
 class UsuarioService:
     def __init__(self):
