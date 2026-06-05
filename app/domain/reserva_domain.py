@@ -25,6 +25,9 @@ class Reserva(BaseModel):
     penalizacion_aplicada: bool = False
     penalizacion_monto: float = 0.0
     reembolso_procesado: float = 0.0
+    # NUEVOS CAMPOS PARA HU-020
+    fecha_inicio_viaje: Optional[datetime] = None
+    fecha_fin_viaje: Optional[datetime] = None
     
     @validator('hora_fin')
     def validar_horario(cls, v, values):
