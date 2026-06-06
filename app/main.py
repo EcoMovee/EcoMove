@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Agregar la carpeta raíz al path de Python
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI
 from app.api.v1.usuario_router import router as usuario_router
 from app.api.v1.vehiculo_router import router as vehiculo_router
