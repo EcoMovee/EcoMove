@@ -1,0 +1,1 @@
+{"success":true,"statusCode":200,"message":"No hay pagos con los filtros seleccionados","data":{"total_registros":0,"totales":{"total_transacciones":0,"total_aprobados":0,"total_rechazados":0,"total_reembolsados":0},"reporte":[]}}

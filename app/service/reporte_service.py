@@ -26,6 +26,16 @@ class ReporteService:
                 if estado not in estados_validos:
                     raise ValueError("INVALID_STATUS")
 
+    def _validar_metodo_pago(self, metodo_pago: Optional[str]):
+        metodos_validos = ["tarjeta_credito", "tarjeta_debito", "monedero_electronico"]
+        if metodo_pago and metodo_pago not in metodos_validos:
+            raise ValueError("INVALID_DATA")
+
+    def _validar_estado_pago(self, estado: Optional[str]):
+        estados_validos = ["aprobado", "rechazado", "reembolsado"]
+        if estado and estado not in estados_validos:
+            raise ValueError("INVALID_DATA")
+
     def _validar_formato(self, formato: str):
         formatos_validos = ["json", "csv", "xlsx", "pdf"]
         if formato not in formatos_validos:
@@ -53,7 +63,6 @@ class ReporteService:
         resultado = []
         
         for r in reservas:
-            # Filtro por fechas
             if filtros.get("fecha_inicio"):
                 fecha_reserva = r.fecha if hasattr(r, 'fecha') else r["fecha"]
                 if fecha_reserva < filtros["fecha_inicio"]:
@@ -63,13 +72,11 @@ class ReporteService:
                 if fecha_reserva > filtros["fecha_fin"]:
                     continue
             
-            # Filtro por estados
             if filtros.get("estados") and len(filtros["estados"]) > 0:
                 estado_actual = r.estado.value if hasattr(r, 'estado') else r["estado"]
                 if estado_actual not in filtros["estados"]:
                     continue
             
-            # Obtener datos de usuario y vehículo
             usuario_id = r.usuario_id if hasattr(r, 'usuario_id') else r["usuario_id"]
             vehiculo_id = r.vehiculo_id if hasattr(r, 'vehiculo_id') else r["vehiculo_id"]
             
@@ -94,18 +101,12 @@ class ReporteService:
         return resultado
 
     def generar_reporte_reservas(self, filtros: Dict) -> Dict[str, Any]:
-        # Validar parámetros
         self._validar_fechas(filtros.get("fecha_inicio"), filtros.get("fecha_fin"))
         self._validar_estados(filtros.get("estados"))
         self._validar_formato(filtros.get("formato", "json"))
         
-        # Obtener todas las reservas
         todas_reservas = list(reserva_repo._db.values())
-        
-        # Aplicar filtros
         reservas_filtradas = self._aplicar_filtros(todas_reservas, filtros)
-        
-        # Calcular resumen
         resumen = self._calcular_resumen(reservas_filtradas)
         
         return {
@@ -119,6 +120,87 @@ class ReporteService:
             "reporte": reservas_filtradas
         }
 
+    def _aplicar_filtros_pagos(self, pagos: List, filtros: Dict) -> List:
+        resultado = []
+        
+        for p in pagos:
+            if filtros.get("fecha_inicio"):
+                if p["fecha_pago"].date() < filtros["fecha_inicio"]:
+                    continue
+            if filtros.get("fecha_fin"):
+                if p["fecha_pago"].date() > filtros["fecha_fin"]:
+                    continue
+            
+            if filtros.get("metodo_pago") and p["metodo_pago"] != filtros["metodo_pago"]:
+                continue
+            
+            if filtros.get("estado") and p["estado"] != filtros["estado"]:
+                continue
+            
+            usuario = self.usuario_repo.get_by_id(p["usuario_id"])
+            reserva = reserva_repo.get_by_id(p["reserva_id"])
+            
+            resultado.append({
+                "id": p["id"],
+                "fecha_pago": p["fecha_pago"].isoformat(),
+                "monto": p["monto"],
+                "metodo_pago": p["metodo_pago"],
+                "estado": p["estado"],
+                "reserva_id": p["reserva_id"],
+                "usuario_nombre": usuario.nombre if usuario else "Desconocido",
+                "usuario_email": usuario.correo if usuario else "Desconocido",
+                "transaccion_id": p["transaccion_id"],
+                "motivo_rechazo": p.get("motivo_rechazo")
+            })
+        
+        return resultado
+
+    def _calcular_totales_pagos(self, pagos: List[Dict]) -> Dict[str, Any]:
+        total_transacciones = len(pagos)
+        total_aprobados = 0
+        total_rechazados = 0
+        total_reembolsados = 0
+        
+        for p in pagos:
+            if p["estado"] == "aprobado":
+                total_aprobados += p["monto"]
+            elif p["estado"] == "rechazado":
+                total_rechazados += p["monto"]
+            elif p["estado"] == "reembolsado":
+                total_reembolsados += p["monto"]
+        
+        return {
+            "total_transacciones": total_transacciones,
+            "total_aprobados": round(total_aprobados, 2),
+            "total_rechazados": round(total_rechazados, 2),
+            "total_reembolsados": round(total_reembolsados, 2)
+        }
+
+    def generar_reporte_pagos(self, filtros: Dict) -> Dict[str, Any]:
+        from app.repository.pago_repository import PagoRepository
+        pago_repo = PagoRepository()
+        
+        self._validar_fechas(filtros.get("fecha_inicio"), filtros.get("fecha_fin"))
+        self._validar_metodo_pago(filtros.get("metodo_pago"))
+        self._validar_estado_pago(filtros.get("estado"))
+        self._validar_formato(filtros.get("formato", "json"))
+        
+        todos_pagos = list(pago_repo._db.values())
+        pagos_filtrados = self._aplicar_filtros_pagos(todos_pagos, filtros)
+        totales = self._calcular_totales_pagos(pagos_filtrados)
+        
+        return {
+            "filtros_aplicados": {
+                "fecha_inicio": filtros.get("fecha_inicio").isoformat() if filtros.get("fecha_inicio") else None,
+                "fecha_fin": filtros.get("fecha_fin").isoformat() if filtros.get("fecha_fin") else None,
+                "metodo_pago": filtros.get("metodo_pago"),
+                "estado": filtros.get("estado")
+            },
+            "total_registros": len(pagos_filtrados),
+            "totales": totales,
+            "reporte": pagos_filtrados
+        }
+
     def exportar_csv(self, data: List[Dict]) -> str:
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=data[0].keys() if data else [])
@@ -129,7 +211,7 @@ class ReporteService:
     def exportar_excel(self, data: List[Dict]) -> bytes:
         wb = Workbook()
         ws = wb.active
-        ws.title = "Reporte de Reservas"
+        ws.title = "Reporte"
         
         if data:
             headers = list(data[0].keys())
@@ -142,17 +224,15 @@ class ReporteService:
         return output.getvalue()
 
     def exportar_pdf(self, data: List[Dict]) -> bytes:
-        html = "<html><head><meta charset='UTF-8'><title>Reporte de Reservas</title></head><body>"
-        html += "<h1>Reporte de Reservas</h1>"
+        html = "<html><head><meta charset='UTF-8'><title>Reporte</title></head><body>"
+        html += "<h1>Reporte</h1>"
         html += "<table border='1' cellpadding='5' cellspacing='0' style='border-collapse: collapse; width: 100%;'>"
         
         if data:
             headers = list(data[0].keys())
             html += "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
             for row in data:
-                html += "<tr>" + "".join(f"<td>{v}</td>" for v in row.values()) + "</tr>"
+                html += "<tr>" + "".join(f"<td>{v}</td>" for v in row.values()) + "<tr>"
         
         html += "</table></body></html>"
-        
-        # Simular PDF (en producción usar pdfkit.from_string)
         return html.encode('utf-8')
