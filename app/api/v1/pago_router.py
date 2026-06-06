@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from domain.pago_domain import PagoRequest
-from service.pago_service import PagoService
-from repository.pago_repository import PagoRepository
-from repository.reserva_repository import reserva_repo
-from core.security import verify_token
+from app.domain.pago_domain import PagoRequest
+from app.service.pago_service import PagoService
+from app.repository.pago_repository import PagoRepository
+from app.repository.reserva_repository import reserva_repo
+from app.core.security import verify_token
 
 router = APIRouter(prefix="/pagos", tags=["Pagos"])
 

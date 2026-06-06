@@ -1,5 +1,5 @@
 from typing import List, Optional
-from domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
+from app.domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
 
 class LogEscaneoRepository:
     def __init__(self):

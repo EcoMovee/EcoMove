@@ -1,5 +1,5 @@
 from typing import List, Optional
-from domain.qr_domain import QR, EstadoQR
+from app.domain.qr_domain import QR, EstadoQR
 
 class QRRepository:
     def __init__(self):

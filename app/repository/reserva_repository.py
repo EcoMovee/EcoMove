@@ -1,6 +1,6 @@
 from datetime import datetime, date, time
 from typing import Dict, Optional, List
-from domain.reserva_domain import Reserva 
+from app.domain.reserva_domain import Reserva 
 
 class ReservaRepository:
     
