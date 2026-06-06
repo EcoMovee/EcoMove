@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import csv
 import io
 from openpyxl import Workbook
@@ -232,7 +232,110 @@ class ReporteService:
             headers = list(data[0].keys())
             html += "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
             for row in data:
-                html += "<tr>" + "".join(f"<td>{v}</td>" for v in row.values()) + "<tr>"
+                html += "<tr>" + "".join(f"<td>{v}</td>" for v in row.values()) + "</tr>"
         
         html += "</table></body></html>"
         return html.encode('utf-8')
+    
+    # ==================== HU-023: Vehículos más usados ====================
+
+    def _calcular_periodo(self, periodo: str, fecha_inicio: Optional[date], fecha_fin: Optional[date]) -> tuple:
+        hoy = date.today()
+        
+        if periodo == "dia":
+            fecha_inicio = hoy
+            fecha_fin = hoy
+        elif periodo == "semana":
+            fecha_inicio = hoy - timedelta(days=7)
+            fecha_fin = hoy
+        elif periodo == "mes":
+            fecha_inicio = hoy - timedelta(days=30)
+            fecha_fin = hoy
+        elif periodo == "rango":
+            if not fecha_inicio or not fecha_fin:
+                raise ValueError("INVALID_DATE_RANGE")
+            if fecha_inicio > fecha_fin:
+                raise ValueError("INVALID_DATE_RANGE")
+        else:
+            raise ValueError("INVALID_PERIOD")
+        
+        return fecha_inicio, fecha_fin
+
+    def generar_ranking_vehiculos(self, filtros: Dict) -> Dict[str, Any]:
+        from app.repository.reserva_repository import reserva_repo
+        from app.repository.vehiculo_repository import VehiculoRepository
+        
+        vehiculo_repo = VehiculoRepository()
+        
+        # Validar período
+        periodo = filtros.get("periodo")
+        fecha_inicio = filtros.get("fecha_inicio")
+        fecha_fin = filtros.get("fecha_fin")
+        
+        fecha_inicio, fecha_fin = self._calcular_periodo(periodo, fecha_inicio, fecha_fin)
+        self._validar_formato(filtros.get("formato", "json"))
+        
+        # Obtener todas las reservas
+        todas_reservas = list(reserva_repo._db.values())
+        
+        # Filtrar por fecha y estados finalizados/confirmados
+        reservas_filtradas = []
+        for r in todas_reservas:
+            fecha_reserva = r.fecha if hasattr(r, 'fecha') else r["fecha"]
+            estado = r.estado.value if hasattr(r, 'estado') else r["estado"]
+            
+            if fecha_inicio <= fecha_reserva <= fecha_fin:
+                if estado in ["finalizada", "confirmada", "en_curso"]:
+                    reservas_filtradas.append(r)
+        
+        # Agrupar por vehículo
+        ranking = {}
+        for r in reservas_filtradas:
+            vehiculo_id = r.vehiculo_id if hasattr(r, 'vehiculo_id') else r["vehiculo_id"]
+            duracion = r.duracion_horas if hasattr(r, 'duracion_horas') else r["duracion_horas"]
+            costo = r.costo_estimado if hasattr(r, 'costo_estimado') else r["costo_estimado"]
+            
+            if vehiculo_id not in ranking:
+                vehiculo = vehiculo_repo.get_by_id(vehiculo_id)
+                ranking[vehiculo_id] = {
+                    "id": vehiculo_id,
+                    "tipo": vehiculo.tipo if vehiculo else "Desconocido",
+                    "modelo": vehiculo.modelo if vehiculo else "Desconocido",
+                    "ubicacion": vehiculo.ubicacion if vehiculo else "Desconocido",
+                    "cantidad_reservas": 0,
+                    "horas_totales_uso": 0,
+                    "ingresos_generados": 0
+                }
+            
+            ranking[vehiculo_id]["cantidad_reservas"] += 1
+            ranking[vehiculo_id]["horas_totales_uso"] += duracion
+            ranking[vehiculo_id]["ingresos_generados"] += costo
+        
+        # Convertir a lista y ordenar
+        ranking_lista = list(ranking.values())
+        ranking_lista.sort(key=lambda x: x["cantidad_reservas"], reverse=True)
+        
+        # Agregar posición
+        for i, item in enumerate(ranking_lista, 1):
+            item["posicion"] = i
+        
+        # Calcular resumen
+        total_vehiculos = len(ranking_lista)
+        total_reservas = sum(item["cantidad_reservas"] for item in ranking_lista)
+        total_horas = sum(item["horas_totales_uso"] for item in ranking_lista)
+        total_ingresos = sum(item["ingresos_generados"] for item in ranking_lista)
+        
+        return {
+            "periodo": {
+                "tipo": periodo,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat()
+            },
+            "resumen": {
+                "total_vehiculos_en_ranking": total_vehiculos,
+                "total_reservas_periodo": total_reservas,
+                "total_horas_uso": round(total_horas, 2),
+                "total_ingresos": round(total_ingresos, 2)
+            },
+            "ranking": ranking_lista
+        }

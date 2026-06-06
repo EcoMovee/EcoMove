@@ -1,0 +1,1 @@
+{"success":true,"statusCode":200,"message":"No hay reservas en el período seleccionado","data":{"periodo":{"tipo":"mes","fecha_inicio":"2026-05-06","fecha_fin":"2026-06-05"},"resumen":{"total_vehiculos_en_ranking":0,"total_reservas_periodo":0,"total_horas_uso":0,"total_ingresos":0},"ranking":[]}}
