@@ -7,58 +7,27 @@ class FiltrosReporteReservas(BaseModel):
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     estados: Optional[List[str]] = None
+    usuario_id: Optional[int] = None
+    vehiculo_id: Optional[int] = None
     formato: str = "json"
 
-
-class ReporteReservaItem(BaseModel):
-    id: int
-    usuario_nombre: str
-    usuario_email: str
-    vehiculo_tipo: str
-    vehiculo_modelo: str
-    fecha: str
-    hora_inicio: str
-    hora_fin: str
-    duracion_horas: float
-    costo_estimado: float
-    estado: str
-    fecha_creacion: str
-
-
-class ReporteReservaResponse(BaseModel):
-    success: bool
-    statusCode: int
-    message: str
-    data: dict
-    
 
 class FiltrosReportePagos(BaseModel):
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     metodo_pago: Optional[str] = None
     estado: Optional[str] = None
+    usuario_id: Optional[int] = None
+    rango_monto_min: Optional[float] = None
+    rango_monto_max: Optional[float] = None
     formato: str = "json"
-    
+
+
 class FiltrosVehiculosTop(BaseModel):
-    periodo: str  # dia, semana, mes, rango
+    periodo: str
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
+    tipo_vehiculo: Optional[str] = None
+    ubicacion: Optional[str] = None
+    limite: int = 10
     formato: str = "json"
-
-
-class VehiculoTopItem(BaseModel):
-    posicion: int
-    id: int
-    tipo: str
-    modelo: str
-    ubicacion: str
-    cantidad_reservas: int
-    horas_totales_uso: float
-    ingresos_generados: float
-
-
-class VehiculosTopResponse(BaseModel):
-    success: bool
-    statusCode: int
-    message: str
-    data: dict
