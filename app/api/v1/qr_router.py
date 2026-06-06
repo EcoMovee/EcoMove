@@ -3,15 +3,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
-from core.dependencies import get_current_user
-from core.constants import HttpStatus, ErrorCodes
-from service.qr_service import QRService
-from repository.qr_repository import qr_repo
-from repository.reserva_repository import reserva_repo
-from domain.qr_domain import QR, EstadoQR
-from domain.reserva_domain import EstadoReserva
-from domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
-from repository.log_escaneo_repository import log_repo
+from app.core.dependencies import get_current_user
+from app.core.constants import HttpStatus, ErrorCodes
+from app.service.qr_service import QRService
+from app.repository.qr_repository import qr_repo
+from app.repository.reserva_repository import reserva_repo
+from app.domain.qr_domain import QR, EstadoQR
+from app.domain.reserva_domain import EstadoReserva
+from app.domain.log_escaneo_domain import LogEscaneoQR, ResultadoEscaneo
+from app.repository.log_escaneo_repository import log_repo
 
 router = APIRouter(prefix="/api/v1/qrs", tags=["QR"])
 qr_service = QRService()
