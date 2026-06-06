@@ -30,3 +30,11 @@ class ReporteReservaResponse(BaseModel):
     statusCode: int
     message: str
     data: dict
+    
+
+class FiltrosReportePagos(BaseModel):
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    metodo_pago: Optional[str] = None
+    estado: Optional[str] = None
+    formato: str = "json"
