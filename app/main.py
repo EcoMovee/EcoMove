@@ -1,9 +1,20 @@
+import sys
+import os
+
+# Agregar la carpeta raíz al path de Python
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI
-from app.api.v1.usuario_router import router as usuario_router
-from app.api.v1.vehiculo_router import router as vehiculo_router
-from app.repository.usuario_repository import UsuarioRepository
+from api.v1.usuario_router import router as usuario_router
+from api.v1.vehiculo_router import router as vehiculo_router
+from api.v1.reserva_router import router as reserva_router
+from api.v1.pago_router import router as pago_router
+from api.v1.qr_router import router as qr_router
+from api.v1.reporte_router import router as reporte_router
+from repository.usuario_repository import UsuarioRepository
 import bcrypt
-from app.domain.usuario_domain import Usuario
+from domain.usuario_domain import Usuario
+
 
 app = FastAPI(
     title="EcoMove API",
@@ -11,8 +22,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.include_router(pago_router, prefix="/api/v1")
 app.include_router(usuario_router, prefix="/api/v1")
 app.include_router(vehiculo_router, prefix="/api/v1")
+app.include_router(reserva_router, prefix="/api/v1")
+app.include_router(qr_router, prefix="/api/v1")
+app.include_router(reporte_router, prefix="/api/v1")
+
 
 # ========== CREAR ADMINISTRADOR INICIAL ==========
 repo = UsuarioRepository()

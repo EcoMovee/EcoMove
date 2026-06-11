@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.domain.vehiculo_domain import VehiculoCreate
-from app.service.vehiculo_service import VehiculoService
-from app.repository.vehiculo_repository import VehiculoRepository
-from app.core.security import verify_admin
+from domain.vehiculo_domain import VehiculoCreate, EstadoUpdateRequest
+from service.vehiculo_service import VehiculoService
+from repository.vehiculo_repository import VehiculoRepository
+from core.security import verify_admin
 from typing import Optional
-from app.domain.vehiculo_domain import VehiculoCreate, EstadoUpdateRequest
-from app.core.security import verify_admin, verify_token
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
 
@@ -61,10 +59,7 @@ def create_vehiculo(
                     }
                 }
             )
-            
-            
-            
-# ==================== HU-006: Consulta de vehículos disponibles ====================
+
 
 @router.get("/disponibles", status_code=status.HTTP_200_OK)
 def get_vehiculos_disponibles(
@@ -74,7 +69,6 @@ def get_vehiculos_disponibles(
     radio_km: Optional[float] = None,
     admin: dict = Depends(verify_admin)
 ):
-    """Consulta vehículos disponibles. Requiere autenticación JWT."""
     try:
         vehiculos, filtros = service.get_vehiculos_disponibles(
             tipo=tipo, latitud=latitud, longitud=longitud, radio_km=radio_km
@@ -135,8 +129,7 @@ def get_vehiculos_disponibles(
             )
         else:
             raise HTTPException(status_code=500, detail={"message": error_msg})
-        
-# ==================== HU-007: Actualización de estado ====================
+
 
 @router.patch("/estado/{vehiculo_id}", status_code=status.HTTP_200_OK)
 def update_vehiculo_estado(
@@ -144,10 +137,6 @@ def update_vehiculo_estado(
     request: EstadoUpdateRequest,
     admin: dict = Depends(verify_admin)
 ):
-    """
-    Actualiza el estado de un vehículo.
-    Solo administradores.
-    """
     from datetime import datetime
     
     try:
@@ -228,63 +217,7 @@ def update_vehiculo_estado(
             )
         
         raise HTTPException(status_code=500, detail={"message": error_msg})
-    
-# ==================== HU-006 + HU-008: Consulta de vehículos disponibles (excluye mantenimiento) ====================
 
-@router.get("/disponibles", status_code=status.HTTP_200_OK)
-def get_vehiculos_disponibles(
-    tipo: Optional[str] = None,
-    latitud: Optional[float] = None,
-    longitud: Optional[float] = None,
-    radio_km: Optional[float] = None,
-    token: dict = Depends(verify_token)
-):
-    """Consulta vehículos disponibles. Excluye vehículos en mantenimiento y en_uso."""
-    try:
-        # Por ahora, solo devuelve disponibles (sin distancia)
-        vehiculos = service.get_vehiculos_disponibles_excluyendo_mantenimiento(tipo)
-        
-        total = len(vehiculos)
-        
-        if total == 0:
-            return {
-                "success": True,
-                "statusCode": 200,
-                "message": "No hay vehículos disponibles con los filtros seleccionados",
-                "data": {
-                    "total": 0,
-                    "filtros_aplicados": {"tipo": tipo} if tipo else None,
-                    "vehiculos": []
-                }
-            }
-        
-        return {
-            "success": True,
-            "statusCode": 200,
-            "message": "Vehículos disponibles encontrados",
-            "data": {
-                "total": total,
-                "filtros_aplicados": {"tipo": tipo} if tipo else None,
-                "vehiculos": [v.model_dump() for v in vehiculos]
-            }
-        }
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "success": False,
-                "statusCode": 503,
-                "message": "Error de conexión con la base de datos",
-                "error": {
-                    "code": "DATABASE_ERROR",
-                    "details": "Intente nuevamente más tarde"
-                }
-            }
-        )
-        
-        
-# ==================== HU-008: Panel de administración (vehículos en mantenimiento) ====================
 
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_vehiculos_by_estado(
@@ -292,17 +225,14 @@ def get_vehiculos_by_estado(
     tipo: Optional[str] = None,
     admin: dict = Depends(verify_admin)
 ):
-    """Panel de administración: consulta vehículos por estado. Solo administradores."""
     try:
         vehiculos = service.get_vehiculos_by_estado(estado, tipo)
         total = len(vehiculos)
         
-        mensaje = f"Vehículos en {estado} encontrados"
-        
         return {
             "success": True,
             "statusCode": 200,
-            "message": mensaje,
+            "message": f"Vehículos en {estado} encontrados",
             "data": {
                 "total": total,
                 "vehiculos": [

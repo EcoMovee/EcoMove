@@ -2,9 +2,9 @@ from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.service.usuario_service import UsuarioService
-from app.core.constants import ErrorCodes, HttpStatus
-from app.core.dependencies import get_current_user
+from service.usuario_service import UsuarioService
+from core.constants import ErrorCodes, HttpStatus
+from core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["Usuarios"])
 service = UsuarioService()
@@ -368,13 +368,4 @@ async def desactivar_usuario(
                 }
             }
         )
-@router.get("/debug/usuarios")
-async def debug_usuarios():
-    from repository.usuario_repository import UsuarioRepository
-    repo = UsuarioRepository()
-    return {
-        "usuarios": [
-            {"id": u.id, "email": u.correo, "rol": u.rol, "estado": u.estado}
-            for u in repo._usuarios
-        ]
-    }    
+  

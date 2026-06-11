@@ -1,8 +1,6 @@
-from app.domain.vehiculo_domain import Vehiculo, VehiculoCreate
-from app.repository.vehiculo_repository import VehiculoRepository
+from domain.vehiculo_domain import Vehiculo, VehiculoCreate
+from repository.vehiculo_repository import VehiculoRepository
 from typing import Optional
-
-
 
 class VehiculoService:
     
@@ -36,7 +34,7 @@ class VehiculoService:
                                    longitud: Optional[float] = None,
                                    radio_km: Optional[float] = None):
         """Consulta vehículos disponibles con filtros"""
-        from app.domain.vehiculo_domain import VehiculoDisponible
+        from domain.vehiculo_domain import VehiculoDisponible
         
         filtros_aplicados = {
             "tipo": tipo if tipo else None,
@@ -44,6 +42,9 @@ class VehiculoService:
             "longitud": longitud if longitud else None,
             "radio_km": radio_km if radio_km else None
         }
+        
+        # Solo vehículos con estado "disponible"
+        vehiculos_db = self.repo.get_disponibles(tipo)
         
         if radio_km is not None and radio_km <= 0:
             raise ValueError("INVALID_RADIUS")
@@ -137,7 +138,7 @@ class VehiculoService:
 
     def get_vehiculos_disponibles_excluyendo_mantenimiento(self, tipo: Optional[str] = None):
         """Obtener vehículos disponibles (excluye mantenimiento y en_uso)"""
-        from app.domain.vehiculo_domain import VehiculoDisponible
+        from domain.vehiculo_domain import VehiculoDisponible
         
         vehiculos_db = self.repo.get_disponibles_excluyendo_mantenimiento(tipo)
         return [
@@ -155,7 +156,7 @@ class VehiculoService:
 
     def get_vehiculos_by_estado(self, estado: str, tipo: Optional[str] = None):
         """Obtener vehículos por estado (para administradores)"""
-        from app.domain.vehiculo_domain import Vehiculo
+        from domain.vehiculo_domain import Vehiculo
         
         vehiculos_db = self.repo.get_by_estado(estado)
         if tipo:
